@@ -36,6 +36,20 @@ namespace toml::impl
 			explicit constexpr utf8_byte_stream(std::basic_string_view<Char> sv) noexcept
 				: source{ sv }
 			{
+				// trim trailing nulls
+				size_t actual_len = source.length();
+				for (size_t i = actual_len; i --> 0_sz;)
+				{
+					if (source[i] != Char{}) // not '\0'
+					{
+						actual_len = i + 1_sz;
+						break;
+					}
+				}
+				if (source.length() != actual_len) // not '\0'
+					source = source.substr(0_sz, actual_len);
+
+				// skip bom
 				if (source.length() >= 3_sz && memcmp(utf8_byte_order_mark.data(), source.data(), 3_sz) == 0)
 					position += 3_sz;
 			}
@@ -47,17 +61,23 @@ namespace toml::impl
 			}
 
 			[[nodiscard]] TOML_ALWAYS_INLINE
+			constexpr bool peek_eof() const noexcept
+			{
+				return eof();
+			}
+
+			[[nodiscard]] TOML_ALWAYS_INLINE
 			constexpr bool error() const noexcept
 			{
 				return false;
 			}
 
 			[[nodiscard]]
-			constexpr optional<uint8_t> operator() () noexcept
+			constexpr unsigned int operator() () noexcept
 			{
 				if (position >= source.length())
-					return {};
-				return static_cast<uint8_t>(source[position++]);
+					return 0xFFFFFFFFu;
+				return static_cast<unsigned int>(static_cast<uint8_t>(source[position++]));
 			}
 	};
 
@@ -98,18 +118,25 @@ namespace toml::impl
 			}
 
 			[[nodiscard]] TOML_ALWAYS_INLINE
+			bool peek_eof() const
+			{
+				using stream_traits = typename std::remove_pointer_t<decltype(source)>::traits_type;
+				return eof() || source->peek() == stream_traits::eof();
+			}
+
+			[[nodiscard]] TOML_ALWAYS_INLINE
 			bool error() const noexcept
 			{
 				return !(*source);
 			}
 
 			[[nodiscard]]
-			optional<uint8_t> operator() ()
+			unsigned int operator() ()
 			{
 				auto val = source->get();
 				if (val == std::basic_istream<Char>::traits_type::eof())
-					return {};
-				return static_cast<uint8_t>(val);
+					return 0xFFFFFFFFu;
+				return static_cast<unsigned int>(val);
 			}
 	};
 
@@ -190,6 +217,9 @@ namespace toml::impl
 		[[nodiscard]]
 		virtual const utf8_codepoint* read_next() = 0;
 
+		[[nodiscard]]
+		virtual bool peek_eof() const = 0;
+
 		#if !TOML_EXCEPTIONS
 
 		[[nodiscard]]
@@ -254,53 +284,57 @@ namespace toml::impl
 
 				while (true)
 				{
-					optional<uint8_t> nextByte;
-					if constexpr (noexcept(stream()) || !TOML_EXCEPTIONS)
+					uint8_t next_byte;
 					{
-						nextByte = stream();
-					}
-					#if TOML_EXCEPTIONS
-					else
-					{
-						try
+						unsigned int next_byte_raw{ 0xFFFFFFFFu };
+						if constexpr (noexcept(stream()) || !TOML_EXCEPTIONS)
 						{
-							nextByte = stream();
+							next_byte_raw = stream();
 						}
-						catch (const std::exception& exc)
-						{
-							throw parse_error{ exc.what(), prev.position, source_path_ };
-						}
-						catch (...)
-						{
-							throw parse_error{ "An unspecified error occurred", prev.position, source_path_ };
-						}
-					}
-					#endif
-
-					if (!nextByte)
-					{
-						if (stream.eof())
-						{
-							if (decoder.needs_more_input())
-								TOML_ERROR("Encountered EOF during incomplete utf-8 code point sequence",
-									prev.position, source_path_);
-							return nullptr;
-						}
+						#if TOML_EXCEPTIONS
 						else
-							TOML_ERROR("An error occurred while reading from the underlying stream",
-								prev.position, source_path_);
+						{
+							try
+							{
+								next_byte_raw = stream();
+							}
+							catch (const std::exception& exc)
+							{
+								throw parse_error{ exc.what(), prev.position, source_path_ };
+							}
+							catch (...)
+							{
+								throw parse_error{ "An unspecified error occurred", prev.position, source_path_ };
+							}
+						}
+						#endif
+
+						if (next_byte_raw >= 256u)
+						{
+							if (stream.eof())
+							{
+								if (decoder.needs_more_input())
+									TOML_ERROR("Encountered EOF during incomplete utf-8 code point sequence",
+										prev.position, source_path_);
+								return nullptr;
+							}
+							else
+								TOML_ERROR("An error occurred while reading from the underlying stream",
+									prev.position, source_path_);
+						}
+
+						TOML_ERROR_CHECK;
+						next_byte = static_cast<uint8_t>(next_byte_raw);
 					}
 
-					TOML_ERROR_CHECK;
-
-					decoder(*nextByte);
+					decoder(next_byte);
 					if (decoder.error())
 						TOML_ERROR( "Encountered invalid utf-8 sequence", prev.position, source_path_ );
 
 					TOML_ERROR_CHECK;
 
 					auto& current = codepoints[cp_idx % 2_sz];
-					current.bytes[current_byte_count++] = static_cast<string_char>(*nextByte);
+					current.bytes[current_byte_count++] = static_cast<string_char>(next_byte);
 					if (decoder.has_code_point())
 					{
 						//store codepoint
@@ -319,6 +353,12 @@ namespace toml::impl
 				}
 
 				TOML_UNREACHABLE;
+			}
+
+			[[nodiscard]]
+			bool peek_eof() const override
+			{
+				return stream.peek_eof();
 			}
 
 			#if !TOML_EXCEPTIONS
@@ -353,7 +393,7 @@ namespace toml::impl
 		: public utf8_reader_interface
 	{
 		public:
-			static constexpr size_t max_history_length = 64;
+			static constexpr size_t max_history_length = 72;
 
 		private:
 			static constexpr size_t history_buffer_size = max_history_length - 1; //'head' is stored in the reader
@@ -430,6 +470,12 @@ namespace toml::impl
 				return negative_offset
 					? history.buffer + ((history.first + history.count - negative_offset) % history_buffer_size)
 					: head;
+			}
+
+			[[nodiscard]]
+			bool peek_eof() const override
+			{
+				return reader.peek_eof();
 			}
 
 			#if !TOML_EXCEPTIONS

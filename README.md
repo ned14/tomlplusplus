@@ -78,19 +78,23 @@ You'll find some more code examples in the `examples` directory, and plenty more
 # Adding toml++ to your project
 `toml++` comes in two flavours: Single-header and Regular. The API is the same for both. 
 
-## 🍦 Single-header flavour
+### 🍦 Single-header flavour
 1. Drop `toml.hpp` wherever you like in your source tree
 2. There is no step two
 
-## 🍨 Regular flavour
+### 🍨 Regular flavour
 1. Add `tomlplusplus/include` to your include paths
 2. `#include <toml++/toml.h>`
 
 ## _"What about build system X, or package manager Y?"_
-Currently there's support for use as a meson submodule, which I _think_ means it can be used with Conan. That's the
-extent of my knowledge in this area; clearly an area of opportunity! If you would like me to add support for a
-particular build system or package manager please let me know by making a [feature request]. Better still, if you have
-the skills and motivation to add support yourself, I'd welcome a pull request with a smile and open arms!
+Currently there's support for use as a meson submodule. That's the extent of my knowledge in this area; clearly an area
+of opportunity! If you would like me to add support for a particular build system or package manager please let me
+know by making a [feature request]. Better still, if you have the skills and motivation to add support yourself, I'd 
+welcome a pull request with a smile and open arms!
+
+### Conan
+`toml++` is available through the [Conan-Center-Index](https://github.com/conan-io/conan-center-index). You simply need to add `tomlplusplus/1.2.3` to your _conanfile_ to include this in your project. The default options are set for the single-header
+flavour, however specifying the option `"multiple_headers": True` is available.
 
 <br>
 
@@ -127,7 +131,7 @@ support for a number of unreleased features from the [TOML master] and some sane
 The library advertises the most recent numbered language version it fully supports via the preprocessor
 defines `TOML_LANG_MAJOR`, `TOML_LANG_MINOR` and `TOML_LANG_PATCH`.
 
-## 🟡 **Unreleased features:**
+### 🔸 **Unreleased language features:**
 - [#516]: Allow newlines and trailing commas in inline tables
 - [#562]: Allow hex floating-point values
 - [#644]: Support `+` in key names
@@ -137,14 +141,14 @@ defines `TOML_LANG_MAJOR`, `TOML_LANG_MINOR` and `TOML_LANG_PATCH`.
 
 > ℹ _`#define TOML_UNRELEASED_FEATURES 1` to enable these features (see [Configuration](#Configuration))._
 
-## 🟢 **TOML v1.0.0-rc.1:**
+### 🔹 **TOML v1.0.0-rc.1:**
 All features supported, including:
 - [#356]: Allow leading zeros in the exponent part of a float
 - [#567]: Control characters are not permitted in comments
 - [#571]: Allow raw tabs inside strings
 - [#665]: Make arrays heterogeneous
 
-## 🟢 **TOML v0.5.0:**
+### 🔹 **TOML v0.5.0:**
 All features supported.
 
 <br>
@@ -160,6 +164,18 @@ If you wish to submit a pull request, please see [CONTRIBUTING] for all the deta
 `toml++` is licensed under the terms of the MIT license - see [LICENSE].
 
 UTF-8 decoding is performed using a state machine based on Bjoern Hoehrmann's '[Flexible and Economical UTF-8 Decoder]'.
+
+### With thanks to:
+- **@bjadamson** - Reported some bugs and helped design a new feature
+- **@bobfang1992** - Reported a bug and created a [wrapper in python](https://github.com/bobfang1992/pytomlpp)
+- **@GiulioRomualdi** - Added cmake+meson support
+- **@mosra** - Created the awesome [m.css] used to generate the API docs
+- **@ned14** - Reported a bunch of bugs and helped design some new features
+- **@prince-chrismc** - Added `toml++` to ConanCenter, and fixed some typos
+- **@rbrugo** - helped design a new feature
+- **@shdnx** - Fixed a bug on GCC 8.2.0 and some meson config issues
+- **@traversaro** - Added vcpkg support and reported a bunch of bugs
+- **@ximion** - Added support for installation with meson
 
 <br>
 
@@ -203,3 +219,4 @@ though you're welcome to reach out via other means. In order of likely response 
 [#709]: https://github.com/toml-lang/toml/pull/709
 [LICENSE-utf8-decoder]: ./LICENSE-utf8-decoder
 [something better than std::optional]: https://github.com/TartanLlama/optional
+[m.css]: https://mcss.mosra.cz/documentation/doxygen

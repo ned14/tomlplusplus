@@ -4,11 +4,10 @@ TEST_CASE("parsing - comments")
 {
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
-# This is a full-line comment
-key = "value"  # This is a comment at the end of a line
-another = "# This is not a comment"
-)"sv),
+		S(R"(# This is a full-line comment
+			key = "value"  # This is a comment at the end of a line
+			another = "# This is not a comment"
+		)"sv),
 		[](table&& tbl)
 		{
 			CHECK(tbl.size() == 2);
@@ -30,7 +29,7 @@ another = "# This is not a comment"
 	{
 		// toml/issues/567 (disallow non-TAB control characters in comments)
 		// 00 - 08
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0000"sv));
+		parsing_should_fail(FILE_LINE_ARGS, S("# \u0000 some trailing garbage"sv));
 		parsing_should_fail(FILE_LINE_ARGS, S("# \u0001"sv));
 		parsing_should_fail(FILE_LINE_ARGS, S("# \u0002"sv));
 		parsing_should_fail(FILE_LINE_ARGS, S("# \u0003"sv));
