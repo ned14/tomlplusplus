@@ -1,10 +1,15 @@
+// This file is a part of toml++ and is subject to the the terms of the MIT license.
+// Copyright (c) 2019-2020 Mark Gillard <mark.gillard@outlook.com.au>
+// See https://github.com/marzer/tomlplusplus/blob/master/LICENSE for the full license text.
+// SPDX-License-Identifier: MIT
+
 #include "tests.h"
 
 TEST_CASE("parsing - tables")
 {
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 [table]
 
 [table-1]
@@ -21,7 +26,7 @@ type.name = "pug"
 [a.b.c]            # this is best practice
 [ d.e.f ]          # same as [d.e.f]
 [ g .  h  . i ]    # same as [g.h.i]
-[ j . "ʞ" . 'l' ]  # same as [j."ʞ".'l']
+[ j . "k" . 'l' ]  # same as [j."k".'l']
 
 # [x] you
 # [x.y] don't
@@ -37,54 +42,54 @@ apple.taste.sweet = true
 [fruit.apple.texture]  # you can add sub-tables
 smooth = true
 
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("table")].as<table>());
-			CHECK(tbl[S("table")].as<table>()->size() == 0_sz);
+			REQUIRE(tbl["table"].as<table>());
+			CHECK(tbl["table"].as<table>()->size() == 0u);
 
-			REQUIRE(tbl[S("table-1")].as<table>());
-			CHECK(tbl[S("table-1")].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("table-1")][S("key1")] == S("some string"sv));
-			CHECK(tbl[S("table-1")][S("key2")] == 123);
+			REQUIRE(tbl["table-1"].as<table>());
+			CHECK(tbl["table-1"].as<table>()->size() == 2u);
+			CHECK(tbl["table-1"]["key1"] == "some string"sv);
+			CHECK(tbl["table-1"]["key2"] == 123);
 
-			REQUIRE(tbl[S("table-2")].as<table>());
-			CHECK(tbl[S("table-2")].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("table-2")][S("key1")] == S("another string"sv));
-			CHECK(tbl[S("table-2")][S("key2")] == 456);
+			REQUIRE(tbl["table-2"].as<table>());
+			CHECK(tbl["table-2"].as<table>()->size() == 2u);
+			CHECK(tbl["table-2"]["key1"] == "another string"sv);
+			CHECK(tbl["table-2"]["key2"] == 456);
 
-			REQUIRE(tbl[S("dog")].as<table>());
-			CHECK(tbl[S("dog")].as<table>()->size() == 1_sz);
+			REQUIRE(tbl["dog"].as<table>());
+			CHECK(tbl["dog"].as<table>()->size() == 1u);
 
-			REQUIRE(tbl[S("dog")][S("tater.man")].as<table>());
-			CHECK(tbl[S("dog")][S("tater.man")].as<table>()->size() == 1_sz);
-			CHECK(tbl[S("dog")][S("tater.man")][S("type")][S("name")] == S("pug"sv));
+			REQUIRE(tbl["dog"]["tater.man"].as<table>());
+			CHECK(tbl["dog"]["tater.man"].as<table>()->size() == 1u);
+			CHECK(tbl["dog"]["tater.man"]["type"]["name"] == "pug"sv);
 
-			CHECK(tbl[S("a")].as<table>());
-			CHECK(tbl[S("a")][S("b")].as<table>());
-			CHECK(tbl[S("a")][S("b")][S("c")].as<table>());
+			CHECK(tbl["a"].as<table>());
+			CHECK(tbl["a"]["b"].as<table>());
+			CHECK(tbl["a"]["b"]["c"].as<table>());
 
-			CHECK(tbl[S("d")].as<table>());
-			CHECK(tbl[S("d")][S("e")].as<table>());
-			CHECK(tbl[S("d")][S("e")][S("f")].as<table>());
+			CHECK(tbl["d"].as<table>());
+			CHECK(tbl["d"]["e"].as<table>());
+			CHECK(tbl["d"]["e"]["f"].as<table>());
 
-			CHECK(tbl[S("g")].as<table>());
-			CHECK(tbl[S("g")][S("h")].as<table>());
-			CHECK(tbl[S("g")][S("h")][S("i")].as<table>());
+			CHECK(tbl["g"].as<table>());
+			CHECK(tbl["g"]["h"].as<table>());
+			CHECK(tbl["g"]["h"]["i"].as<table>());
 
-			CHECK(tbl[S("j")].as<table>());
-			CHECK(tbl[S("j")][S("ʞ")].as<table>());
-			CHECK(tbl[S("j")][S("ʞ")][S("l")].as<table>());
+			CHECK(tbl["j"].as<table>());
+			CHECK(tbl["j"]["k"].as<table>());
+			CHECK(tbl["j"]["k"]["l"].as<table>());
 
-			REQUIRE(tbl[S("fruit")].as<table>());
-			CHECK(tbl[S("fruit")][S("apple")][S("color")] == S("red"sv));
-			CHECK(tbl[S("fruit")][S("apple")][S("taste")][S("sweet")] == true);
-			CHECK(tbl[S("fruit")][S("apple")][S("texture")][S("smooth")] == true);
+			REQUIRE(tbl["fruit"].as<table>());
+			CHECK(tbl["fruit"]["apple"]["color"] == "red"sv);
+			CHECK(tbl["fruit"]["apple"]["taste"]["sweet"] == true);
+			CHECK(tbl["fruit"]["apple"]["texture"]["smooth"] == true);
 		}
 	);
 
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # DO NOT DO THIS
 
 [fruit]
@@ -92,9 +97,9 @@ apple = "red"
 
 [fruit]
 orange = "orange"
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # DO NOT DO THIS EITHER
 
 [fruit]
@@ -102,138 +107,140 @@ apple = "red"
 
 [fruit.apple]
 texture = "smooth"
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 [fruit]
 apple.color = "red"
 apple.taste.sweet = true
 
 [fruit.apple]
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 [fruit]
 apple.color = "red"
 apple.taste.sweet = true
 
 [fruit.apple.taste]
-)"sv));
+)"sv);
 
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 # VALID BUT DISCOURAGED
 [fruit.apple]
 [animal]
 [fruit.orange]
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("animal")].as<table>());
-			CHECK(tbl[S("animal")].as<table>()->size() == 0_sz);
+			REQUIRE(tbl["animal"].as<table>());
+			CHECK(tbl["animal"].as<table>()->size() == 0u);
 
-			REQUIRE(tbl[S("fruit")].as<table>());
-			CHECK(tbl[S("fruit")].as<table>()->size() == 2_sz);
+			REQUIRE(tbl["fruit"].as<table>());
+			CHECK(tbl["fruit"].as<table>()->size() == 2u);
 
-			REQUIRE(tbl[S("fruit")][S("apple")].as<table>());
-			REQUIRE(tbl[S("fruit")][S("orange")].as<table>());
+			REQUIRE(tbl["fruit"]["apple"].as<table>());
+			REQUIRE(tbl["fruit"]["orange"].as<table>());
 		}
 	);
 
 
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 # RECOMMENDED
 [fruit.apple]
 [fruit.orange]
 [animal]
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("animal")].as<table>());
-			CHECK(tbl[S("animal")].as<table>()->size() == 0_sz);
+			REQUIRE(tbl["animal"].as<table>());
+			CHECK(tbl["animal"].as<table>()->size() == 0u);
 
-			REQUIRE(tbl[S("fruit")].as<table>());
-			CHECK(tbl[S("fruit")].as<table>()->size() == 2_sz);
+			REQUIRE(tbl["fruit"].as<table>());
+			CHECK(tbl["fruit"].as<table>()->size() == 2u);
 
-			REQUIRE(tbl[S("fruit")][S("apple")].as<table>());
-			REQUIRE(tbl[S("fruit")][S("orange")].as<table>());
+			REQUIRE(tbl["fruit"]["apple"].as<table>());
+			REQUIRE(tbl["fruit"]["orange"].as<table>());
 		}
 	);
+
+	parsing_should_fail(FILE_LINE_ARGS, R"([])"sv);
 }
 
 TEST_CASE("parsing - inline tables")
 {
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 name = { first = "Tom", last = "Preston-Werner" }
 point = { x = 1, y = 2 }
 animal = { type.name = "pug" }
 
 [product]
 type = { name = "Nail" }
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("name")].as<table>());
-			CHECK(tbl[S("name")].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("name")][S("first")] == S("Tom"sv));
-			CHECK(tbl[S("name")][S("last")] == S("Preston-Werner"sv));
+			REQUIRE(tbl["name"].as<table>());
+			CHECK(tbl["name"].as<table>()->size() == 2u);
+			CHECK(tbl["name"]["first"] == "Tom"sv);
+			CHECK(tbl["name"]["last"] == "Preston-Werner"sv);
 
-			REQUIRE(tbl[S("point")].as<table>());
-			CHECK(tbl[S("point")].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("point")][S("x")] == 1);
-			CHECK(tbl[S("point")][S("y")] == 2);
+			REQUIRE(tbl["point"].as<table>());
+			CHECK(tbl["point"].as<table>()->size() == 2u);
+			CHECK(tbl["point"]["x"] == 1);
+			CHECK(tbl["point"]["y"] == 2);
 
-			REQUIRE(tbl[S("animal")].as<table>());
-			CHECK(tbl[S("animal")].as<table>()->size() == 1_sz);
-			REQUIRE(tbl[S("animal")][S("type")].as<table>());
-			CHECK(tbl[S("animal")][S("type")].as<table>()->size() == 1_sz);
-			CHECK(tbl[S("animal")][S("type")][S("name")] == S("pug"sv));
+			REQUIRE(tbl["animal"].as<table>());
+			CHECK(tbl["animal"].as<table>()->size() == 1u);
+			REQUIRE(tbl["animal"]["type"].as<table>());
+			CHECK(tbl["animal"]["type"].as<table>()->size() == 1u);
+			CHECK(tbl["animal"]["type"]["name"] == "pug"sv);
 
-			REQUIRE(tbl[S("product")].as<table>());
-			CHECK(tbl[S("product")].as<table>()->size() == 1_sz);
-			REQUIRE(tbl[S("product")][S("type")].as<table>());
-			CHECK(tbl[S("product")][S("type")].as<table>()->size() == 1_sz);
-			CHECK(tbl[S("product")][S("type")][S("name")] == S("Nail"sv));
+			REQUIRE(tbl["product"].as<table>());
+			CHECK(tbl["product"].as<table>()->size() == 1u);
+			REQUIRE(tbl["product"]["type"].as<table>());
+			CHECK(tbl["product"]["type"].as<table>()->size() == 1u);
+			CHECK(tbl["product"]["type"]["name"] == "Nail"sv);
 		}
 	);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 [product]
 type = { name = "Nail" }
 type.edible = false  # INVALID
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 [product]
 type.name = "Nail"
 type = { edible = false }  # INVALID
-)"sv));
+)"sv);
 
 	// "newlines are allowed between the curly braces [if] they are valid within a value."
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 test = { val1 = "foo", val2 = [
 	1, 2,
 	3
 ], val3 = "bar" }
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("test")].as<table>());
-			CHECK(tbl[S("test")].as<table>()->size() == 3_sz);
-			CHECK(tbl[S("test")][S("val1")] == S("foo"sv));
-			REQUIRE(tbl[S("test")][S("val2")].as<array>());
-			CHECK(tbl[S("test")][S("val2")].as<array>()->size() == 3_sz);
-			CHECK(tbl[S("test")][S("val2")][0] == 1);
-			CHECK(tbl[S("test")][S("val2")][1] == 2);
-			CHECK(tbl[S("test")][S("val2")][2] == 3);
-			CHECK(tbl[S("test")][S("val3")] == S("bar"sv));
+			REQUIRE(tbl["test"].as<table>());
+			CHECK(tbl["test"].as<table>()->size() == 3u);
+			CHECK(tbl["test"]["val1"] == "foo"sv);
+			REQUIRE(tbl["test"]["val2"].as<array>());
+			CHECK(tbl["test"]["val2"].as<array>()->size() == 3u);
+			CHECK(tbl["test"]["val2"][0] == 1);
+			CHECK(tbl["test"]["val2"][1] == 2);
+			CHECK(tbl["test"]["val2"][2] == 3);
+			CHECK(tbl["test"]["val3"] == "bar"sv);
 		}
 	);
 
@@ -242,18 +249,18 @@ test = { val1 = "foo", val2 = [
 	{
 		parsing_should_succeed(
 			FILE_LINE_ARGS,
-			S(R"(
+			R"(
 name = {
 	first = "Tom",
 	last = "Preston-Werner",
 }
-)"sv),
+)"sv,
 			[](table&& tbl)
 			{
-				REQUIRE(tbl[S("name")].as<table>());
-				CHECK(tbl[S("name")].as<table>()->size() == 2_sz);
-				CHECK(tbl[S("name")][S("first")] == S("Tom"sv));
-				CHECK(tbl[S("name")][S("last")] == S("Preston-Werner"sv));
+				REQUIRE(tbl["name"].as<table>());
+				CHECK(tbl["name"].as<table>()->size() == 2u);
+				CHECK(tbl["name"]["first"] == "Tom"sv);
+				CHECK(tbl["name"]["last"] == "Preston-Werner"sv);
 			}
 		);
 
@@ -261,15 +268,15 @@ name = {
 	#else
 	{
 		// "A terminating comma (also called trailing comma) is not permitted after the last key/value pair in an inline table."
-		parsing_should_fail(FILE_LINE_ARGS, S(R"(name = { first = "Tom", last = "Preston-Werner", })"sv));
+		parsing_should_fail(FILE_LINE_ARGS, R"(name = { first = "Tom", last = "Preston-Werner", })"sv);
 
 		// "No newlines are allowed between the curly braces unless they are valid within a value."
-		parsing_should_fail(FILE_LINE_ARGS, S(R"(
+		parsing_should_fail(FILE_LINE_ARGS, R"(
 name = {
 	first = "Tom",
 	last = "Preston-Werner"
 }
-)"sv));
+)"sv);
 
 	}
 	#endif
@@ -280,7 +287,7 @@ TEST_CASE("parsing - arrays-of-tables")
 {
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(
+		R"(
 points = [ { x = 1, y = 2, z = 3 },
            { x = 7, y = 8, z = 9 },
            { x = 2, y = 4, z = 8 } ]
@@ -316,77 +323,77 @@ color = "gray"
   [[fruit.variety]]
     name = "plantain"
 
-)"sv),
+)"sv,
 		[](table&& tbl)
 		{
-			REQUIRE(tbl[S("points")].as<array>());
-			CHECK(tbl[S("points")].as<array>()->size() == 3_sz);
-			CHECK(tbl[S("points")].as<array>()->is_homogeneous());
-			CHECK(tbl[S("points")].as<array>()->is_array_of_tables());
-			CHECK(tbl[S("points")][0][S("x")] == 1);
-			CHECK(tbl[S("points")][0][S("y")] == 2);
-			CHECK(tbl[S("points")][0][S("z")] == 3);
-			CHECK(tbl[S("points")][1][S("x")] == 7);
-			CHECK(tbl[S("points")][1][S("y")] == 8);
-			CHECK(tbl[S("points")][1][S("z")] == 9);
-			CHECK(tbl[S("points")][2][S("x")] == 2);
-			CHECK(tbl[S("points")][2][S("y")] == 4);
-			CHECK(tbl[S("points")][2][S("z")] == 8);
+			REQUIRE(tbl["points"].as<array>());
+			CHECK(tbl["points"].as<array>()->size() == 3u);
+			CHECK(tbl["points"].as<array>()->is_homogeneous());
+			CHECK(tbl["points"].as<array>()->is_array_of_tables());
+			CHECK(tbl["points"][0]["x"] == 1);
+			CHECK(tbl["points"][0]["y"] == 2);
+			CHECK(tbl["points"][0]["z"] == 3);
+			CHECK(tbl["points"][1]["x"] == 7);
+			CHECK(tbl["points"][1]["y"] == 8);
+			CHECK(tbl["points"][1]["z"] == 9);
+			CHECK(tbl["points"][2]["x"] == 2);
+			CHECK(tbl["points"][2]["y"] == 4);
+			CHECK(tbl["points"][2]["z"] == 8);
 
-			REQUIRE(tbl[S("products")].as<array>());
-			CHECK(tbl[S("products")].as<array>()->size() == 3_sz);
-			CHECK(tbl[S("products")].as<array>()->is_homogeneous());
-			CHECK(tbl[S("products")].as<array>()->is_array_of_tables());
+			REQUIRE(tbl["products"].as<array>());
+			CHECK(tbl["products"].as<array>()->size() == 3u);
+			CHECK(tbl["products"].as<array>()->is_homogeneous());
+			CHECK(tbl["products"].as<array>()->is_array_of_tables());
 
-			REQUIRE(tbl[S("products")][0].as<table>());
-			CHECK(tbl[S("products")][0].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("products")][0][S("name")] == S("Hammer"sv));
-			CHECK(tbl[S("products")][0][S("sku")] == 738594937);
+			REQUIRE(tbl["products"][0].as<table>());
+			CHECK(tbl["products"][0].as<table>()->size() == 2u);
+			CHECK(tbl["products"][0]["name"] == "Hammer"sv);
+			CHECK(tbl["products"][0]["sku"] == 738594937);
 
-			REQUIRE(tbl[S("products")][1].as<table>());
-			CHECK(tbl[S("products")][1].as<table>()->size() == 0_sz);
+			REQUIRE(tbl["products"][1].as<table>());
+			CHECK(tbl["products"][1].as<table>()->size() == 0u);
 
-			REQUIRE(tbl[S("products")][2].as<table>());
-			CHECK(tbl[S("products")][2].as<table>()->size() == 3_sz);
-			CHECK(tbl[S("products")][2][S("name")] == S("Nail"sv));
-			CHECK(tbl[S("products")][2][S("sku")] == 284758393);
-			CHECK(tbl[S("products")][2][S("color")] == S("gray"sv));
+			REQUIRE(tbl["products"][2].as<table>());
+			CHECK(tbl["products"][2].as<table>()->size() == 3u);
+			CHECK(tbl["products"][2]["name"] == "Nail"sv);
+			CHECK(tbl["products"][2]["sku"] == 284758393);
+			CHECK(tbl["products"][2]["color"] == "gray"sv);
 
 
-			REQUIRE(tbl[S("fruit")].as<array>());
-			CHECK(tbl[S("fruit")].as<array>()->size() == 2_sz);
-			CHECK(tbl[S("fruit")].as<array>()->is_homogeneous());
-			CHECK(tbl[S("fruit")].as<array>()->is_array_of_tables());
+			REQUIRE(tbl["fruit"].as<array>());
+			CHECK(tbl["fruit"].as<array>()->size() == 2u);
+			CHECK(tbl["fruit"].as<array>()->is_homogeneous());
+			CHECK(tbl["fruit"].as<array>()->is_array_of_tables());
 
-			REQUIRE(tbl[S("fruit")][0].as<table>());
-			CHECK(tbl[S("fruit")][0].as<table>()->size() == 3_sz);
-			CHECK(tbl[S("fruit")][0][S("name")] == S("apple"sv));
+			REQUIRE(tbl["fruit"][0].as<table>());
+			CHECK(tbl["fruit"][0].as<table>()->size() == 3u);
+			CHECK(tbl["fruit"][0]["name"] == "apple"sv);
 
-			REQUIRE(tbl[S("fruit")][0][S("physical")].as<table>());
-			CHECK(tbl[S("fruit")][0][S("physical")].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("fruit")][0][S("physical")][S("color")] == S("red"sv));
-			CHECK(tbl[S("fruit")][0][S("physical")][S("shape")] == S("round"sv));
+			REQUIRE(tbl["fruit"][0]["physical"].as<table>());
+			CHECK(tbl["fruit"][0]["physical"].as<table>()->size() == 2u);
+			CHECK(tbl["fruit"][0]["physical"]["color"] == "red"sv);
+			CHECK(tbl["fruit"][0]["physical"]["shape"] == "round"sv);
 
-			REQUIRE(tbl[S("fruit")][0][S("variety")].as<array>());
-			CHECK(tbl[S("fruit")][0][S("variety")].as<array>()->size() == 2_sz);
-			CHECK(tbl[S("fruit")][0][S("variety")].as<array>()->is_homogeneous());
-			CHECK(tbl[S("fruit")][0][S("variety")].as<array>()->is_array_of_tables());
-			CHECK(tbl[S("fruit")][0][S("variety")][0][S("name")] == S("red delicious"sv));
-			CHECK(tbl[S("fruit")][0][S("variety")][1][S("name")] == S("granny smith"sv));
+			REQUIRE(tbl["fruit"][0]["variety"].as<array>());
+			CHECK(tbl["fruit"][0]["variety"].as<array>()->size() == 2u);
+			CHECK(tbl["fruit"][0]["variety"].as<array>()->is_homogeneous());
+			CHECK(tbl["fruit"][0]["variety"].as<array>()->is_array_of_tables());
+			CHECK(tbl["fruit"][0]["variety"][0]["name"] == "red delicious"sv);
+			CHECK(tbl["fruit"][0]["variety"][1]["name"] == "granny smith"sv);
 
-			REQUIRE(tbl[S("fruit")][1].as<table>());
-			CHECK(tbl[S("fruit")][1].as<table>()->size() == 2_sz);
-			CHECK(tbl[S("fruit")][1][S("name")] == S("banana"sv));
+			REQUIRE(tbl["fruit"][1].as<table>());
+			CHECK(tbl["fruit"][1].as<table>()->size() == 2u);
+			CHECK(tbl["fruit"][1]["name"] == "banana"sv);
 
-			REQUIRE(tbl[S("fruit")][1][S("variety")].as<array>());
-			CHECK(tbl[S("fruit")][1][S("variety")].as<array>()->size() == 1_sz);
-			CHECK(tbl[S("fruit")][1][S("variety")].as<array>()->is_homogeneous());
-			CHECK(tbl[S("fruit")][1][S("variety")].as<array>()->is_array_of_tables());
-			CHECK(tbl[S("fruit")][1][S("variety")][0][S("name")] == S("plantain"sv));
+			REQUIRE(tbl["fruit"][1]["variety"].as<array>());
+			CHECK(tbl["fruit"][1]["variety"].as<array>()->size() == 1u);
+			CHECK(tbl["fruit"][1]["variety"].as<array>()->is_homogeneous());
+			CHECK(tbl["fruit"][1]["variety"].as<array>()->is_array_of_tables());
+			CHECK(tbl["fruit"][1]["variety"][0]["name"] == "plantain"sv);
 		}
 	);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # INVALID TOML DOC
 [fruit.physical]  # subtable, but to which parent element should it belong?
   color = "red"
@@ -395,16 +402,16 @@ color = "gray"
 [[fruit]]  # parser must throw an error upon discovering that "fruit" is
            # an array rather than a table
   name = "apple"
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # INVALID TOML DOC
 fruit = []
 
 [[fruit]] # Not allowed
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # INVALID TOML DOC
 [[fruit]]
   name = "apple"
@@ -415,9 +422,9 @@ fruit = []
   # INVALID: This table conflicts with the previous array of tables
   [fruit.variety]
     name = "granny smith"
-)"sv));
+)"sv);
 
-	parsing_should_fail(FILE_LINE_ARGS, S(R"(
+	parsing_should_fail(FILE_LINE_ARGS, R"(
 # INVALID TOML DOC
 [[fruit]]
   name = "apple"
@@ -429,6 +436,6 @@ fruit = []
   # INVALID: This array of tables conflicts with the previous table
   [[fruit.physical]]
     color = "green"
-)"sv));
+)"sv);
 
 }

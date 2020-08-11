@@ -1,35 +1,40 @@
+// This file is a part of toml++ and is subject to the the terms of the MIT license.
+// Copyright (c) 2019-2020 Mark Gillard <mark.gillard@outlook.com.au>
+// See https://github.com/marzer/tomlplusplus/blob/master/LICENSE for the full license text.
+// SPDX-License-Identifier: MIT
+
 #pragma once
-#define TOML_UNDEF_MACROS 0
-#if !defined(_MSC_VER) || !defined(_M_IX86)
-	#define TOML_ALL_INLINE 0
-#endif
-#include "../include/toml++/toml_preprocessor.h"
+#include "settings.h"
 
-#if TOML_COMPILER_EXCEPTIONS != TOML_EXCEPTIONS
-	#error TOML_EXCEPTIONS does not match TOML_COMPILER_EXCEPTIONS (default behaviour should be to match)
+#if USE_TARTANLLAMA_OPTIONAL
+	#include "tloptional.h"
 #endif
 
-TOML_PUSH_WARNINGS
-TOML_DISABLE_ALL_WARNINGS
-#ifdef TARTANLLAMA_OPTIONAL
-	#if __has_include(<tloptional/include/tl/optional.hpp>)
-		#include <tloptional/include/tl/optional.hpp>
-	#else
-		#error  TartanLlama/optional is missing! You probably need to fetch submodules ("git submodule update --init extern/tloptional")
-	#endif
-	#define TOML_OPTIONAL_TYPE tl::optional
+#include "evil_macros.h"
+
+#if USE_SINGLE_HEADER
+	#include "../toml.hpp"
+#else
+	#include "../include/toml++/toml.h"
 #endif
+
+#if TOML_ICC
+	#define UNICODE_LITERALS_OK 0
+#else
+	#define UNICODE_LITERALS_OK 1
+#endif
+
+TOML_DISABLE_ARITHMETIC_WARNINGS
+
+TOML_DISABLE_WARNINGS
 #include "catch2.h"
 #include <sstream>
 namespace toml {}
 using namespace Catch::literals;
 using namespace toml;
-TOML_POP_WARNINGS
-
-#include "../include/toml++/toml.h"
+TOML_ENABLE_WARNINGS
 
 #define FILE_LINE_ARGS	std::string_view{ __FILE__ }, __LINE__
-#define S(str)			TOML_STRING_PREFIX(str)
 #define BOM_PREFIX "\xEF\xBB\xBF"
 
 #if TOML_EXCEPTIONS
@@ -45,190 +50,66 @@ TOML_POP_WARNINGS
 	while (false)
 #endif
 
-TOML_PUSH_WARNINGS
-TOML_DISABLE_FLOAT_WARNINGS
+#define CHECK_SYMMETRIC_RELOP(lhs, op, rhs, result)	\
+	CHECK(((lhs) op (rhs)) == (result));			\
+	CHECK(((rhs) op (lhs)) == (result))
 
+#define CHECK_SYMMETRIC_EQUAL(lhs, rhs)				\
+	CHECK_SYMMETRIC_RELOP(lhs, ==, rhs, true);		\
+	CHECK_SYMMETRIC_RELOP(lhs, !=, rhs, false)
 
-template <typename Char, typename Func = std::false_type>
-inline bool parsing_should_succeed(
+#define CHECK_SYMMETRIC_INEQUAL(lhs, rhs)			\
+	CHECK_SYMMETRIC_RELOP(lhs, ==, rhs, false);		\
+	CHECK_SYMMETRIC_RELOP(lhs, !=, rhs, true)
+
+// function_view - adapted from here: https://vittorioromeo.info/index/blog/passing_functions_to_functions.html
+template <typename Func>
+class function_view;
+template <typename R, typename... P>
+class function_view<R(P...)> final
+{
+	private:
+		using func_type = R(P...);
+		using eraser_func_type = R(void*, P&&...);
+
+		mutable void* ptr_ = {};
+		mutable eraser_func_type* eraser = {};
+
+	public:
+
+		function_view() noexcept = default;
+
+		template <typename T>
+		function_view(T&& x) noexcept
+			: ptr_{ reinterpret_cast<void*>(std::addressof(x)) }
+		{
+			eraser = [](void* ptr, P&&... xs) -> R
+			{
+				return (*reinterpret_cast<std::add_pointer_t<std::remove_reference_t<T>>>(ptr))(std::forward<P>(xs)...);
+			};
+		}
+
+		decltype(auto) operator()(P&&... xs) const
+		{
+			return eraser(ptr_, std::forward<P>(xs)...);
+		}
+
+		[[nodiscard]] operator bool() const noexcept { return !!ptr_; }
+};
+
+using pss_func = function_view<void(toml::table&&)>;
+
+bool parsing_should_succeed(
 	std::string_view test_file,
 	uint32_t test_line,
-	std::basic_string_view<Char> toml_str,
-	Func&& func = {},
-	std::string_view source_path = {})
-{
-	INFO(
-		"["sv << test_file << ", line "sv << test_line << "] "sv
-		<< "parsing_should_succeed(\""sv << std::string_view(reinterpret_cast<const char*>(toml_str.data()), toml_str.length()) << "\")"sv
-	)
+	std::string_view toml_str,
+	pss_func&& func = {},
+	std::string_view source_path = {});
 
-	constexpr auto validate_table = [](table&& tabl, std::string_view path)  -> table&&
-	{
-		INFO("Validating table source information"sv)
-		CHECK(tabl.source().begin != source_position{});
-		CHECK(tabl.source().end != source_position{});
-		if (path.empty())
-			CHECK(tabl.source().path == nullptr);
-		else
-		{
-			REQUIRE(tabl.source().path != nullptr);
-			CHECK(*tabl.source().path == path);
-		}
-		return std::move(tabl);
-	};
-
-	static constexpr auto is_functor = !std::is_same_v<impl::remove_cvref_t<Func>, std::false_type>;
-
-	#if TOML_EXCEPTIONS
-
-	try
-	{
-		{
-			INFO("Parsing string directly"sv)
-			if constexpr (is_functor)
-				std::forward<Func>(func)(validate_table(toml::parse(toml_str, source_path), source_path));
-			else
-				validate_table(toml::parse(toml_str, source_path), source_path);
-		}
-		{
-			INFO("Parsing from a string stream"sv)
-			std::basic_stringstream<Char, std::char_traits<Char>, std::allocator<Char>> ss;
-			ss.write(toml_str.data(), static_cast<std::streamsize>(toml_str.length()));
-			if constexpr (is_functor)
-				std::forward<Func>(func)(validate_table(toml::parse(ss, source_path), source_path));
-			else
-				validate_table(toml::parse(ss, source_path), source_path);
-		}
-	}
-	catch (const parse_error& err)
-	{
-		FORCE_FAIL(
-			"Parse error on line "sv << err.source().begin.line
-			<< ", column "sv << err.source().begin.column
-			<< ":\n"sv << err.description()
-		);
-		return false;
-	}
-
-	#else
-
-	{
-		INFO("Parsing string directly"sv)
-		parse_result result = toml::parse(toml_str, source_path);
-		if (result)
-		{
-			if constexpr (is_functor)
-				std::forward<Func>(func)(validate_table(std::move(result), source_path));
-			else
-				validate_table(std::move(result), source_path);
-		}
-		else
-		{
-			FORCE_FAIL(
-				"Parse error on line "sv << result.error().source().begin.line
-				<< ", column "sv << result.error().source().begin.column
-				<< ":\n"sv << result.error().description()
-			);
-		}
-	}
-
-	{
-		INFO("Parsing from a string stream"sv)
-		std::basic_stringstream<Char, std::char_traits<Char>, std::allocator<Char>> ss;
-		ss.write(toml_str.data(), static_cast<std::streamsize>(toml_str.length()));
-		parse_result result = toml::parse(ss, source_path);
-		if (result)
-		{
-			if constexpr (is_functor)
-				std::forward<Func>(func)(validate_table(std::move(result), source_path));
-			else
-				validate_table(std::move(result), source_path);
-		}
-		else
-		{
-			FORCE_FAIL(
-				"Parse error on line "sv << result.error().source().begin.line
-				<< ", column "sv << result.error().source().begin.column
-				<< ":\n"sv << result.error().description()
-			);
-		}
-	}
-
-	#endif
-
-	return true;
-}
-
-template <typename Char>
-inline bool parsing_should_fail(
+bool parsing_should_fail(
 	std::string_view test_file,
 	uint32_t test_line,
-	std::basic_string_view<Char> toml_str)
-{
-	INFO(
-		"["sv << test_file << ", line "sv << test_line << "] "sv
-		<< "parsing_should_fail(\""sv << std::string_view(reinterpret_cast<const char*>(toml_str.data()), toml_str.length()) << "\")"sv
-	)
-
-	#if TOML_EXCEPTIONS
-
-	static constexpr auto run_tests = [](auto&& fn)
-	{
-		try
-		{
-			fn();
-		}
-		catch (const parse_error&)
-		{
-			SUCCEED("parse_error thrown OK"sv);
-			return true;
-		}
-		catch (const std::exception& exc)
-		{
-			FORCE_FAIL("Expected parsing failure, saw exception: "sv << exc.what());
-			return false;
-		}
-		catch (...)
-		{
-			FORCE_FAIL("Expected parsing failure, saw unspecified exception"sv);
-			return false;
-		}
-
-		FORCE_FAIL("Expected parsing failure"sv);
-		return false;
-	};
-
-	return run_tests([=]() { (void)toml::parse(toml_str); })
-		&& run_tests([=]()
-		{
-			std::basic_stringstream<Char, std::char_traits<Char>, std::allocator<Char>> ss;
-			ss.write(toml_str.data(), static_cast<std::streamsize>(toml_str.length()));
-			(void)toml::parse(ss);
-		});
-
-	#else
-
-	static constexpr auto run_tests = [](auto&& fn)
-	{
-		if (parse_result result = fn(); !result)
-		{
-			SUCCEED("parse_error generated OK"sv);
-			return true;
-		}
-
-		FORCE_FAIL("Expected parsing failure"sv);
-	};
-
-	return run_tests([=]() { return toml::parse(toml_str); })
-		&& run_tests([=]()
-		{
-			std::basic_stringstream<Char, std::char_traits<Char>, std::allocator<Char>> ss;
-			ss.write(toml_str.data(), static_cast<std::streamsize>(toml_str.length()));
-			return toml::parse(ss);
-		});
-
-	#endif
-}
+	std::string_view toml_str);
 
 template <typename T>
 inline bool parse_expected_value(
@@ -247,7 +128,7 @@ inline bool parse_expected_value(
 
 	static constexpr auto is_val = [](char32_t codepoint)
 	{
-		if constexpr (std::is_same_v<string, impl::promoted<T>>)
+		if constexpr (impl::node_type_of<T> == node_type::string)
 			return codepoint == U'"' || codepoint == U'\'';
 		else
 			return !impl::is_whitespace(codepoint);
@@ -287,7 +168,7 @@ inline bool parse_expected_value(
 		end.column++;
 	}
 
-	using value_type = impl::promoted<impl::remove_cvref_t<T>>;
+	using value_type = impl::native_type_of<impl::remove_cvref_t<T>>;
 	value<value_type> val_parsed;
 	{
 		INFO("["sv << test_file << ", line "sv << test_line << "] "sv << "parse_expected_value: Checking initial parse"sv)
@@ -300,39 +181,106 @@ inline bool parse_expected_value(
 			[&](table&& tbl)
 			{
 				REQUIRE(tbl.size() == 1);
-				auto nv = tbl[S("val"sv)];
+				auto nv = tbl["val"sv];
 				REQUIRE(nv);
+				REQUIRE(nv.is<value_type>());
 				REQUIRE(nv.as<value_type>());
-				REQUIRE(nv.get()->type() == impl::node_type_of<T>);
+				REQUIRE(nv.type() == impl::node_type_of<T>);
+				REQUIRE(nv.node());
+				REQUIRE(nv.node()->is<value_type>());
+				REQUIRE(nv.node()->as<value_type>());
+				REQUIRE(nv.node()->type() == impl::node_type_of<T>);
+
+				// check homogeneity
+				REQUIRE(nv.is_homogeneous());
+				REQUIRE(nv.is_homogeneous(node_type::none));
+				REQUIRE(nv.is_homogeneous(impl::node_type_of<T>));
+				REQUIRE(nv.is_homogeneous<value_type>());
+				REQUIRE(nv.node()->is_homogeneous());
+				REQUIRE(nv.node()->is_homogeneous(node_type::none));
+				REQUIRE(nv.node()->is_homogeneous(impl::node_type_of<T>));
+				REQUIRE(nv.node()->is_homogeneous<value_type>());
+				for (auto nt = impl::unwrap_enum(node_type::table); nt <= impl::unwrap_enum(node_type::date_time); nt++)
+				{
+					if (node_type{ nt } == impl::node_type_of<T>)
+						continue;
+					node* first_nonmatch{};
+					REQUIRE(!nv.is_homogeneous(node_type{ nt }));
+					REQUIRE(!nv.is_homogeneous(node_type{ nt }, first_nonmatch));
+					REQUIRE(first_nonmatch == nv.node());
+					REQUIRE(!nv.node()->is_homogeneous(node_type{ nt }));
+					REQUIRE(!nv.node()->is_homogeneous(node_type{ nt }, first_nonmatch));
+					REQUIRE(first_nonmatch == nv.node());
+				}
 
 				// check the raw value
-				REQUIRE(nv.get()->value<value_type>() == expected);
-				REQUIRE(nv.get()->value_or(T{}) == expected);
+				REQUIRE(nv.node()->value<value_type>() == expected);
+				REQUIRE(nv.node()->value_or(T{}) == expected);
 				REQUIRE(nv.as<value_type>()->get() == expected);
 				REQUIRE(nv.value<value_type>() == expected);
 				REQUIRE(nv.value_or(T{}) == expected);
 				REQUIRE(nv.ref<value_type>() == expected);
-				REQUIRE(nv.get()->ref<value_type>() == expected);
+				REQUIRE(nv.node()->ref<value_type>() == expected);
 
 				// check the table relops
-				REQUIRE(tbl == table{ { { S("val"sv), expected } } });
-				REQUIRE(!(tbl != table{ { { S("val"sv), expected } } }));
+				REQUIRE(tbl == table{ { { "val"sv, expected } } });
+				REQUIRE(!(tbl != table{ { { "val"sv, expected } } }));
 
-				// check the value relops
-				REQUIRE(*nv.as<value_type>() == expected);
-				REQUIRE(expected == *nv.as<value_type>());
-				REQUIRE(!(*nv.as<value_type>() != expected));
-				REQUIRE(!(expected != *nv.as<value_type>()));
-
-				// check the node_view relops
-				REQUIRE(nv == expected);
-				REQUIRE(expected == nv);
-				REQUIRE(!(nv != expected));
-				REQUIRE(!(expected != nv));
+				// check value/node relops
+				CHECK_SYMMETRIC_EQUAL(*nv.as<value_type>(), *nv.as<value_type>());
+				CHECK_SYMMETRIC_EQUAL(*nv.as<value_type>(), expected);
+				CHECK_SYMMETRIC_EQUAL(nv, expected);
 
 				// make sure source info is correct
-				REQUIRE(nv.get()->source().begin == begin);
-				REQUIRE(nv.get()->source().end == end);
+				CHECK_SYMMETRIC_EQUAL(nv.node()->source().begin, begin);
+				CHECK_SYMMETRIC_EQUAL(nv.node()->source().end, end);
+
+				// check float identities etc
+				if constexpr (std::is_same_v<value_type, double>)
+				{
+					auto& float_node = *nv.as<value_type>();
+					const auto fpcls = impl::fpclassify(*float_node);
+					if (fpcls == impl::fp_class::nan)
+					{
+						CHECK_SYMMETRIC_EQUAL(float_node, std::numeric_limits<double>::quiet_NaN());
+						CHECK_SYMMETRIC_INEQUAL(float_node, std::numeric_limits<double>::infinity());
+						CHECK_SYMMETRIC_INEQUAL(float_node, -std::numeric_limits<double>::infinity());
+						CHECK_SYMMETRIC_INEQUAL(float_node, 1.0);
+						CHECK_SYMMETRIC_INEQUAL(float_node, 0.0);
+						CHECK_SYMMETRIC_INEQUAL(float_node, -1.0);
+					}
+					else if (fpcls == impl::fp_class::neg_inf || fpcls == impl::fp_class::pos_inf)
+					{
+						CHECK_SYMMETRIC_INEQUAL(float_node, std::numeric_limits<double>::quiet_NaN());
+						if (fpcls == impl::fp_class::neg_inf)
+						{
+							CHECK_SYMMETRIC_EQUAL(float_node, -std::numeric_limits<double>::infinity());
+							CHECK_SYMMETRIC_INEQUAL(float_node, std::numeric_limits<double>::infinity());
+						}
+						else
+						{
+							CHECK_SYMMETRIC_EQUAL(float_node, std::numeric_limits<double>::infinity());
+							CHECK_SYMMETRIC_INEQUAL(float_node, -std::numeric_limits<double>::infinity());
+						}
+						CHECK_SYMMETRIC_INEQUAL(float_node, 1.0);
+						CHECK_SYMMETRIC_INEQUAL(float_node, 0.0);
+						CHECK_SYMMETRIC_INEQUAL(float_node, -1.0);
+					}
+					else
+					{
+						CHECK_SYMMETRIC_INEQUAL(float_node, std::numeric_limits<double>::quiet_NaN());
+						CHECK_SYMMETRIC_INEQUAL(float_node, std::numeric_limits<double>::infinity());
+						CHECK_SYMMETRIC_INEQUAL(float_node, -std::numeric_limits<double>::infinity());
+						CHECK_SYMMETRIC_EQUAL(float_node, *float_node);
+						if (std::abs(*float_node) <= 1e10)
+						{
+							CHECK_SYMMETRIC_INEQUAL(float_node, *float_node + 100.0);
+							CHECK_SYMMETRIC_INEQUAL(float_node, *float_node - 100.0);
+						}
+						CHECK(float_node < std::numeric_limits<double>::infinity());
+						CHECK(float_node > -std::numeric_limits<double>::infinity());
+					}
+				}
 
 				// steal the val for round-trip tests
 				if (!stolen_value)
@@ -353,7 +301,7 @@ inline bool parse_expected_value(
 		{
 			std::string str;
 			{
-				auto tbl = table{ { { S("val"sv), *val_parsed } } };
+				auto tbl = table{ { { "val"sv, *val_parsed } } };
 				std::ostringstream ss;
 				ss << tbl;
 				str = std::move(ss).str();
@@ -367,10 +315,10 @@ inline bool parse_expected_value(
 				[&](table&& tbl)
 				{
 					REQUIRE(tbl.size() == 1);
-					auto nv = tbl[S("val"sv)];
+					auto nv = tbl["val"sv];
 					REQUIRE(nv);
 					REQUIRE(nv.as<value_type>());
-					REQUIRE(nv.get()->type() == impl::node_type_of<T>);
+					REQUIRE(nv.node()->type() == impl::node_type_of<T>);
 
 					if (value_ok && nv.ref<value_type>() != expected)
 					{
@@ -388,13 +336,14 @@ inline bool parse_expected_value(
 	return true;
 }
 
-// manually instantiate some templates to reduce test compilation time (chosen using ClangBuildAnalyzer)
+// manually instantiate some templates to reduce obj bloat and test compilation time
+
 extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const int&);
 extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const unsigned int&);
 extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const bool&);
 extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const float&);
 extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const double&);
-extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const toml::string_view&);
+extern template bool parse_expected_value(std::string_view, uint32_t, std::string_view, const std::string_view&);
 namespace std
 {
 	extern template class unique_ptr<const Catch::IExceptionTranslator>;
@@ -411,5 +360,3 @@ namespace Catch
 		extern template std::string stringify(const node_view<const node>&);
 	}
 }
-
-TOML_POP_WARNINGS // TOML_DISABLE_FLOAT_WARNINGS

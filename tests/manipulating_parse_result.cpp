@@ -1,3 +1,8 @@
+// This file is a part of toml++ and is subject to the the terms of the MIT license.
+// Copyright (c) 2019-2020 Mark Gillard <mark.gillard@outlook.com.au>
+// See https://github.com/marzer/tomlplusplus/blob/master/LICENSE for the full license text.
+// SPDX-License-Identifier: MIT
+
 #include "tests.h"
 
 #if !TOML_EXCEPTIONS
@@ -12,19 +17,19 @@ TEST_CASE("parse_result - good parse")
 	REQUIRE(!result.failed());
 	REQUIRE(result);
 
-	REQUIRE(!result.get().empty());
-	REQUIRE(result.get().size() == 1);
-	REQUIRE(!std::move(result).get().empty());
-	REQUIRE(!static_cast<const parse_result&>(result).get().empty());
+	REQUIRE(!result.table().empty());
+	REQUIRE(result.table().size() == 1);
+	REQUIRE(!std::move(result).table().empty());
+	REQUIRE(!static_cast<const parse_result&>(result).table().empty());
 
 	REQUIRE(!static_cast<table&>(result).empty());
 	REQUIRE(!static_cast<table&&>(result).empty());
 	REQUIRE(!static_cast<const table&>(result).empty());
 	
 	auto& tbl = static_cast<table&>(result);
-	CHECK(tbl[S("key"sv)]);
-	CHECK(result[S("key"sv)]);
-	CHECK(&result[S("key"sv)].ref<bool>() == &tbl[S("key"sv)].ref<bool>());
+	CHECK(tbl["key"sv]);
+	CHECK(result["key"sv]);
+	CHECK(&result["key"sv].ref<bool>() == &tbl["key"sv].ref<bool>());
 	CHECK(result.begin() == tbl.begin());
 	CHECK(result.end() == tbl.end());
 	CHECK(result.begin() != tbl.end());
@@ -40,9 +45,9 @@ TEST_CASE("parse_result - good parse")
 	CHECK(cresult.cbegin() == ctbl.cbegin());
 	CHECK(cresult.cend() == ctbl.cend());
 	CHECK(cresult.cbegin() != ctbl.cend());
-	CHECK(ctbl[S("key"sv)]);
-	CHECK(cresult[S("key"sv)]);
-	CHECK(&cresult[S("key"sv)].ref<bool>() == &ctbl[S("key"sv)].ref<bool>());
+	CHECK(ctbl["key"sv]);
+	CHECK(cresult["key"sv]);
+	CHECK(&cresult["key"sv].ref<bool>() == &ctbl["key"sv].ref<bool>());
 
 	size_t tbl_iterations{};
 	for (auto&& [k, v] : tbl)
@@ -78,14 +83,14 @@ TEST_CASE("parse_result - bad parse")
 	REQUIRE(result.failed());
 	REQUIRE(!result);
 
-	CHECK(!result[S("key"sv)]);
+	CHECK(!result["key"sv]);
 	CHECK(result.begin() == decltype(result.begin()){});
 	CHECK(result.end() == decltype(result.end()){});
 	CHECK(result.cbegin() == decltype(result.cbegin()){});
 	CHECK(result.cend() == decltype(result.cend()){});
 
 	auto& cresult = static_cast<const parse_result&>(result);
-	CHECK(!result[S("key"sv)]);
+	CHECK(!result["key"sv]);
 	CHECK(cresult.begin() == decltype(cresult.begin()){});
 	CHECK(cresult.end() == decltype(cresult.end()){});
 	CHECK(cresult.cbegin() == decltype(cresult.cbegin()){});

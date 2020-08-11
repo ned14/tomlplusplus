@@ -12,8 +12,10 @@
 #include <array>
 #include <ctime>
 #include "utf8_console.h"
-#define TOML_UNRELEASED_FEATURES 1
+
+#define TOML_PARSER 0
 #include <toml++/toml.h>
+
 using namespace std::string_view_literals;
 
 namespace
@@ -127,7 +129,10 @@ int main(int argc, char** argv)
 		toml::node* new_node{};
 
 		if (auto arr = tree.back()->as_array())
-			new_node = &arr->push_back(std::forward<decltype(obj)>(obj));
+		{
+			arr->push_back(std::forward<decltype(obj)>(obj));
+			new_node = &arr->back();
+		}
 		else
 			new_node = &(*tree.back()->ref<toml::table>().insert_or_assign(
 				rand_string(rand<size_t>(1u, 4u), '-'),
@@ -198,6 +203,6 @@ int main(int argc, char** argv)
 		}
 	}
 
-	std::cout << root << std::endl;
+	std::cout << root << "\n";
 	return 0;
 }

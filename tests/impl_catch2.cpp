@@ -1,11 +1,11 @@
-#include "../include/toml++/toml_preprocessor.h"
+// This file is a part of toml++ and is subject to the the terms of the MIT license.
+// Copyright (c) 2019-2020 Mark Gillard <mark.gillard@outlook.com.au>
+// See https://github.com/marzer/tomlplusplus/blob/master/LICENSE for the full license text.
+// SPDX-License-Identifier: MIT
 
-TOML_PUSH_WARNINGS
-TOML_DISABLE_ALL_WARNINGS
 #define CATCH_CONFIG_RUNNER
 #include "catch2.h"
 #include <clocale>
-TOML_POP_WARNINGS
 
 int main(int argc, char* argv[])
 {

@@ -1,24 +1,29 @@
+// This file is a part of toml++ and is subject to the the terms of the MIT license.
+// Copyright (c) 2019-2020 Mark Gillard <mark.gillard@outlook.com.au>
+// See https://github.com/marzer/tomlplusplus/blob/master/LICENSE for the full license text.
+// SPDX-License-Identifier: MIT
+
 #include "tests.h"
 
 TEST_CASE("parsing - comments")
 {
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(# This is a full-line comment
+		R"(# This is a full-line comment
 			key = "value"  # This is a comment at the end of a line
 			another = "# This is not a comment"
-		)"sv),
+		)"sv,
 		[](table&& tbl)
 		{
 			CHECK(tbl.size() == 2);
-			CHECK(tbl[S("key")] == S("value"sv));
-			CHECK(tbl[S("another")] == S("# This is not a comment"sv));
+			CHECK(tbl["key"] == "value"sv);
+			CHECK(tbl["another"] == "# This is not a comment"sv);
 		}
 	);
 
 	parsing_should_succeed(
 		FILE_LINE_ARGS,
-		S(R"(# this = "looks like a KVP but is commented out)"sv),
+		R"(# this = "looks like a KVP but is commented out)"sv,
 		[](table&& tbl)
 		{
 			CHECK(tbl.size() == 0);
@@ -29,15 +34,15 @@ TEST_CASE("parsing - comments")
 	{
 		// toml/issues/567 (disallow non-TAB control characters in comments)
 		// 00 - 08
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0000 some trailing garbage"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0001"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0002"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0003"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0004"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0005"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0006"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0007"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0008"sv));
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0000 some trailing garbage"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0001"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0002"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0003"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0004"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0005"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0006"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0007"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0008"sv);
 		
 		// skip tab and line breaks (real and otherwise)
 		// \u0009 is \t
@@ -47,26 +52,26 @@ TEST_CASE("parsing - comments")
 		// \u000D is \r
 		
 		// 0E - 1F
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u000E"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u000F"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0010"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0011"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0012"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0013"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0014"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0015"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0016"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0017"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0018"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u0019"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001A"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001B"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001C"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001D"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001E"sv));
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u001F"sv));
+		parsing_should_fail(FILE_LINE_ARGS, "# \u000E"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u000F"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0010"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0011"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0012"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0013"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0014"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0015"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0016"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0017"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0018"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u0019"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001A"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001B"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001C"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001D"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001E"sv);
+		parsing_should_fail(FILE_LINE_ARGS, "# \u001F"sv);
 		// 7F
-		parsing_should_fail(FILE_LINE_ARGS, S("# \u007F"sv));
+		parsing_should_fail(FILE_LINE_ARGS, "# \u007F"sv);
 	}
 	#else
 	{

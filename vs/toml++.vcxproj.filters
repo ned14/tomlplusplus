@@ -40,17 +40,11 @@
     <ClInclude Include="..\include\toml++\toml_utf8.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\toml++\toml_utf8_generated.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\toml++\toml_value.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\include\toml++\toml_version.h">
       <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\tests\catch2.h">
-      <Filter>tests</Filter>
     </ClInclude>
     <ClInclude Include="..\include\toml++\toml_array.hpp">
       <Filter>include</Filter>
@@ -82,6 +76,9 @@
     <ClInclude Include="..\include\toml++\toml_json_formatter.hpp">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\toml++\toml_utf8_streams.hpp">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.editorconfig" />
@@ -95,27 +92,37 @@
     <None Include="..\python\generate_single_header.py">
       <Filter>python</Filter>
     </None>
-    <None Include="..\python\generate_unicode_functions.py">
-      <Filter>python</Filter>
-    </None>
     <None Include="..\docs\Doxyfile">
-      <Filter>doc</Filter>
+      <Filter>docs</Filter>
     </None>
     <None Include="..\docs\Doxyfile-mcss">
-      <Filter>doc</Filter>
+      <Filter>docs</Filter>
     </None>
     <None Include="..\docs\tomlplusplus.css">
-      <Filter>doc</Filter>
+      <Filter>docs</Filter>
     </None>
     <None Include="..\docs\tomlplusplus.js">
-      <Filter>doc</Filter>
+      <Filter>docs</Filter>
     </None>
     <None Include="..\CONTRIBUTING.md" />
     <None Include="..\meson.build" />
-    <None Include="..\tests\meson.build">
-      <Filter>tests</Filter>
-    </None>
     <None Include="toml++.props" />
+    <None Include="..\python\utils.py">
+      <Filter>python</Filter>
+    </None>
+    <None Include="..\python\generate_conformance_tests.py">
+      <Filter>python</Filter>
+    </None>
+    <None Include="..\docs\main_page.dox">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="..\.gitattributes" />
+    <None Include="..\.gitignore" />
+    <None Include="..\python\generate_windows_test_targets.py">
+      <Filter>python</Filter>
+    </None>
+    <None Include="..\CODE_OF_CONDUCT.md" />
+    <None Include="..\LICENSE" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -124,11 +131,14 @@
     <Filter Include="python">
       <UniqueIdentifier>{5ba46476-31a3-484e-aee7-f840dd2202b1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="doc">
+    <Filter Include="docs">
       <UniqueIdentifier>{5ed0949f-6855-4664-ad86-2b38ceeb400b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="tests">
-      <UniqueIdentifier>{b838dba3-02f6-446f-840e-6b4c62d2fb0c}</UniqueIdentifier>
-    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="toml++.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\meson_options.txt" />
   </ItemGroup>
 </Project>

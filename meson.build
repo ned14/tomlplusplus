@@ -1,7 +1,7 @@
 project(
 	'tomlplusplus',
 	'cpp',
-	version : '1.3.2',
+	version : '2.1.0',
 	license : 'MIT',
 	default_options : [
 		'cpp_std=c++17',
@@ -25,6 +25,15 @@ if build_tests or build_examples
 	compiler = meson.get_compiler('cpp')
 	message(['compiler ID: ', compiler.get_id()])
 	message(['compiler version: ', compiler.version()])
+
+	# intel-cl  __builtin_bit_cast workaround
+	if compiler.get_id() == 'intel-cl'
+		add_project_arguments([
+				'/D__builtin_bit_cast(x,y)=x{}'
+			],
+			language : 'cpp'
+		)	
+	endif
 	
 	# GCC or Clang
 	if compiler.get_id() == 'gcc' or compiler.get_id() == 'clang'
@@ -84,6 +93,9 @@ if build_tests or build_examples
 					'-Wunused-parameter',
 					'-Wvariadic-macros',
 					'-Wwrite-strings',
+					'-Wmissing-noreturn',
+					'-Wsuggest-attribute=const',
+					'-Wsuggest-attribute=pure'
 				],
 				language : 'cpp'
 			)
@@ -101,7 +113,6 @@ if build_tests or build_examples
 		endif
 		add_project_arguments([
 				'-ferror-limit=5',
-				'-fchar8_t',			
 				'-Wno-unused-command-line-argument',
 
 				# flags from here down are disabling stupidly pedantic warnings that only appear with -Weverything
@@ -110,7 +121,7 @@ if build_tests or build_examples
 				'-Wno-documentation',
 				'-Wno-documentation-unknown-command',
 				'-Wno-switch-enum',
-				'-Wno-covered-switch-default'		
+				'-Wno-covered-switch-default'
 			],
 			language : 'cpp'
 		)
@@ -118,15 +129,23 @@ if build_tests or build_examples
 			add_project_arguments([ '-ftime-trace' ], language : 'cpp')
 		endif
 		if get_option('SMALL_BINARIES')
-			add_project_arguments([ '-Oz', '-fmerge-all-constants' ], language : 'cpp')
+			add_project_arguments([ '-Oz', '-fmerge-all-constants', '-Wl,--build-id' ], language : 'cpp')
 		endif
+	endif
+
+	# msvc
+	if compiler.get_id() == 'msvc'
+		add_project_arguments([
+				'/utf-8'
+			],
+			language : 'cpp'
+		)
 	endif
 
 	# ICC's visual studio frontend, ICL
 	if compiler.get_id() == 'intel-cl'
 		add_project_arguments([
 				'/Qoption,cpp,--unicode_source_kind,UTF-8',
-				'/std=c++latest',
 				'/wd82', # storage class is not first
 				'/wd280', # selector expression is constant (why the fuck is that a warning?)
 				'/wd411', # class provides no constructor (duh, it's an aggregate)

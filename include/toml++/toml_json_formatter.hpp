@@ -4,22 +4,22 @@
 // SPDX-License-Identifier: MIT
 
 #pragma once
-#include "toml_json_formatter.h"
 //# {{
-#if !TOML_DOXYGEN
-#if !defined(TOML_IMPLEMENTATION) || !TOML_IMPLEMENTATION
+#include "toml_preprocessor.h"
+#if !TOML_IMPLEMENTATION
 	#error This is an implementation-only header.
 #endif
 //# }}
 
+#include "toml_json_formatter.h"
+
 TOML_PUSH_WARNINGS
 TOML_DISABLE_SWITCH_WARNINGS
 
-namespace toml
+TOML_NAMESPACE_START
 {
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	void json_formatter<Char>::print(const toml::table& tbl)
+	inline void json_formatter<Char>::print(const toml::table& tbl)
 	{
 		if (tbl.empty())
 			impl::print_to_stream("{}"sv, base::stream());
@@ -36,7 +36,7 @@ namespace toml
 				base::print_newline(true);
 				base::print_indent();
 
-				base::print_quoted_string(k);
+				base::print_quoted_string(k, false);
 				impl::print_to_stream(" : "sv, base::stream());
 
 				const auto type = v.type();
@@ -58,9 +58,6 @@ namespace toml
 		base::clear_naked_newline();
 	}
 }
+TOML_NAMESPACE_END
 
 TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS
-
-//# {{
-#endif // !TOML_DOXYGEN
-//# }}

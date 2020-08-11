@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|Win32">
-      <Configuration>Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|Win32">
-      <Configuration>Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
@@ -24,19 +16,6 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -75,30 +54,41 @@
     <ClInclude Include="..\include\toml++\toml_preprocessor.h" />
     <ClInclude Include="..\include\toml++\toml_print_to_stream.h" />
     <ClInclude Include="..\include\toml++\toml_table.hpp" />
-    <ClInclude Include="..\include\toml++\toml_utf8_generated.h" />
     <ClInclude Include="..\include\toml++\toml_table.h" />
     <ClInclude Include="..\include\toml++\toml_utf8.h" />
     <ClInclude Include="..\include\toml++\toml_utf8_streams.h" />
+    <ClInclude Include="..\include\toml++\toml_utf8_streams.hpp" />
     <ClInclude Include="..\include\toml++\toml_value.h" />
     <ClInclude Include="..\include\toml++\toml_instantiations.hpp" />
     <ClInclude Include="..\include\toml++\toml_version.h" />
-    <ClInclude Include="..\tests\catch2.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\.editorconfig" />
+    <None Include="..\.gitattributes" />
+    <None Include="..\.gitignore" />
+    <None Include="..\CODE_OF_CONDUCT.md" />
     <None Include="..\CONTRIBUTING.md" />
     <None Include="..\docs\Doxyfile" />
     <None Include="..\docs\Doxyfile-mcss" />
+    <None Include="..\docs\main_page.dox" />
     <None Include="..\docs\tomlplusplus.css" />
     <None Include="..\docs\tomlplusplus.js" />
+    <None Include="..\LICENSE" />
     <None Include="..\meson.build" />
     <None Include="..\python\ci_single_header_check.py" />
+    <None Include="..\python\generate_conformance_tests.py" />
     <None Include="..\python\generate_documentation.py" />
     <None Include="..\python\generate_single_header.py" />
-    <None Include="..\python\generate_unicode_functions.py" />
+    <None Include="..\python\generate_windows_test_targets.py" />
+    <None Include="..\python\utils.py" />
     <None Include="..\README.md" />
-    <None Include="..\tests\meson.build" />
     <None Include="toml++.props" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="toml++.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\meson_options.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

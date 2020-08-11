@@ -8,14 +8,11 @@
 #include "toml_array.h"
 #include "toml_value.h"
 
-namespace toml
+TOML_PUSH_WARNINGS
+TOML_DISABLE_ARITHMETIC_WARNINGS
+
+TOML_NAMESPACE_START
 {
-	TOML_PUSH_WARNINGS
-	TOML_DISABLE_FLOAT_WARNINGS
-
-	template <typename Char, typename T>
-	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>&, const node_view<T>&);
-
 	/// \brief	A view of a node.
 	/// 
 	/// \detail A node_view is like a std::optional<toml::node> with lots of toml-specific stuff built-in.
@@ -39,16 +36,16 @@ namespace toml
 	///		
 	/// )"sv);
 	/// 
-	/// std::cout << tbl["title"] << std::endl;
-	/// std::cout << tbl["products"][0]["name"] << std::endl;
-	/// std::cout << tbl["products"][0]["keywords"] << std::endl;
-	/// std::cout << tbl["products"][0]["keywords"][2] << std::endl;
+	/// std::cout << tbl["title"] << "\n";
+	/// std::cout << tbl["products"][0]["name"] << "\n";
+	/// std::cout << tbl["products"][0]["keywords"] << "\n";
+	/// std::cout << tbl["products"][0]["keywords"][2] << "\n";
 	/// 
 	/// tbl["products"][0]["keywords"].as_array()->push_back("heavy");
-	/// std::cout << tbl["products"][0]["keywords"] << std::endl;
-	/// std::cout << "has product[2]: "sv << !!tbl["products"][2] << std::endl;
-	/// std::cout << "product[2]: "sv << tbl["products"][2] << std::endl;
-		/// \ecpp
+	/// std::cout << tbl["products"][0]["keywords"] << "\n";
+	/// std::cout << "has product[2]: "sv << !!tbl["products"][2] << "\n";
+	/// std::cout << "product[2]: "sv << tbl["products"][2] << "\n";
+	/// \ecpp
 	/// 
 	/// \out
 	/// "my hardware store"
@@ -59,15 +56,16 @@ namespace toml
 	/// has product[2]: false
 	/// product[2]:
 	/// \eout
-	template <typename T>
+	template <typename ViewedType>
 	class TOML_API TOML_TRIVIAL_ABI node_view
 	{
 		public:
-			using viewed_type = T;
+			using viewed_type = ViewedType;
 
 		private:
-			friend class toml::table;
-			template <typename U> friend class toml::node_view;
+			friend class TOML_NAMESPACE::node;
+			friend class TOML_NAMESPACE::table;
+			template <typename T> friend class TOML_NAMESPACE::node_view;
 
 			mutable viewed_type* node_ = nullptr;
 
@@ -86,10 +84,27 @@ namespace toml
 			TOML_NODISCARD_CTOR
 			node_view() noexcept = default;
 
+			///// \brief	Copy constructor.
+			TOML_NODISCARD_CTOR
+			node_view(const node_view&) noexcept = default;
+
+			///// \brief	Copy-assignment operator.
+			node_view& operator= (const node_view&) & noexcept = default;
+
+			///// \brief	Move constructor.
+			TOML_NODISCARD_CTOR
+			node_view(node_view&&) noexcept = default;
+
+			///// \brief	Move-assignment operator.
+			node_view& operator= (node_view&&) & noexcept = default;
+
 			/// \brief	Returns true if the view references a node.
 			[[nodiscard]] explicit operator bool() const noexcept { return node_ != nullptr; }
 			/// \brief	Returns the node that's being referenced by the view.
-			[[nodiscard]] viewed_type* get() const noexcept { return node_; }
+			[[nodiscard]] viewed_type* node() const noexcept { return node_; }
+
+			[[nodiscard, deprecated("use node_view::node() instead")]]
+			viewed_type* get() const noexcept { return node_; }
 
 			/// \brief	Returns the type identifier for the viewed node.
 			[[nodiscard]] node_type type() const noexcept { return node_ ? node_->type() : node_type::none; }
@@ -121,35 +136,30 @@ namespace toml
 
 			/// \brief	Checks if this view references a node of a specific type.
 			///
-			/// \tparam	U	A TOML node or value type.
+			/// \tparam	T	A TOML node or value type.
 			///
 			/// \returns	Returns true if the viewed node is an instance of the specified type.
 			/// 
 			/// \see toml::node::is()
-			template <typename U>
+			template <typename T>
 			[[nodiscard]]
 			bool is() const noexcept
 			{
-				return node_ ? node_->template is<U>() : false;
+				return node_ ? node_->template is<T>() : false;
 			}
 
 			/// \brief	Gets a pointer to the viewed node as a more specific node type.
 			///
-			/// \tparam	U	The node type or TOML value type to cast to.
+			/// \tparam	T	The node type or TOML value type to cast to.
 			///
 			/// \returns	A pointer to the node as the given type, or nullptr if it was a different type.
 			/// 
 			/// \see toml::node::as()
-			template <typename U>
+			template <typename T>
 			[[nodiscard]]
 			auto as() const noexcept
 			{
-				static_assert(
-					impl::is_value_or_node<impl::unwrapped<U>>,
-					"Template type parameter must be one of the basic value types, a toml::table, or a toml::array"
-				);
-
-				return node_ ? node_->template as<U>() : nullptr;
+				return node_ ? node_->template as<T>() : nullptr;
 			}
 
 			/// \brief	Returns a pointer to the viewed node as a toml::table, if it is one.
@@ -157,7 +167,7 @@ namespace toml
 			/// \brief	Returns a pointer to the viewed node as a toml::array, if it is one.
 			[[nodiscard]] auto as_array() const noexcept { return as<array>(); }
 			/// \brief	Returns a pointer to the viewed node as a toml::value<string>, if it is one.
-			[[nodiscard]] auto as_string() const noexcept { return as<string>(); }
+			[[nodiscard]] auto as_string() const noexcept { return as<std::string>(); }
 			/// \brief	Returns a pointer to the viewed node as a toml::value<int64_t>, if it is one.
 			[[nodiscard]] auto as_integer() const noexcept { return as<int64_t>(); }
 			/// \brief	Returns a pointer to the viewed node as a toml::value<double>, if it is one.
@@ -171,21 +181,159 @@ namespace toml
 			/// \brief	Returns a pointer to the viewed node as a toml::value<date_time>, if it is one.
 			[[nodiscard]] auto as_date_time() const noexcept { return as<date_time>(); }
 
+			/// \brief	Checks if the viewed node contains values/elements of only one type.
+			///
+			/// \detail \cpp
+			/// auto cfg = toml::parse("arr = [ 1, 2, 3, 4.0 ]");
+			/// 
+			/// toml::node* nonmatch{};
+			/// if (cfg["arr"].is_homogeneous(toml::node_type::integer, nonmatch))
+			/// 	std::cout << "array was homogeneous"sv << "\n";
+			/// else
+			/// 	std::cout << "array was not homogeneous!\n"
+			/// 	<< "first non-match was a "sv << nonmatch->type() << " at " << nonmatch->source() << "\n";
+			/// \ecpp
+			/// 
+			/// \out
+			/// array was not homogeneous!
+			///	first non-match was a floating-point at line 1, column 18
+			/// \eout
+			/// 
+			/// \param	ntype			A TOML node type. <br>
+			/// 						<strong><em>toml::node_type::none: </em></strong> "is every element the same type?" <br>
+			/// 						<strong><em>Anything else:</em></strong> "is every element one of these?"
+			/// \param first_nonmatch	Reference to a pointer in which the address of the first non-matching element
+			/// 						will be stored if the return value is false.
+			///
+			/// \returns	True if the viewed node was homogeneous.
+			/// 
+			/// \remarks	Always returns `false` if the view does not reference a node, or if the viewed node is
+			/// 			an empty table or array.
+			[[nodiscard]]
+			bool is_homogeneous(node_type ntype, viewed_type*& first_nonmatch) const noexcept
+			{
+				if (!node_)
+				{
+					first_nonmatch = {};
+					return false;
+				}
+				return node_->is_homogeneous(ntype, first_nonmatch);
+			}
+
+			/// \brief	Checks if the viewed node contains values/elements of only one type.
+			///
+			/// \detail \cpp
+			/// auto cfg = toml::parse("arr = [ 1, 2, 3 ]");
+			/// std::cout << "homogenous: "sv << cfg["arr"].is_homogeneous(toml::node_type::none) << "\n";
+			/// std::cout << "all floats: "sv << cfg["arr"].is_homogeneous(toml::node_type::floating_point) << "\n";
+			/// std::cout << "all arrays: "sv << cfg["arr"].is_homogeneous(toml::node_type::array) << "\n";
+			/// std::cout << "all ints:   "sv << cfg["arr"].is_homogeneous(toml::node_type::integer) << "\n";
+			/// 
+			/// \ecpp
+			/// 
+			/// \out
+			/// homogeneous: true
+			/// all floats:  false
+			/// all arrays:  false
+			/// all ints:    true
+			/// \eout
+			/// 
+			/// \param	ntype	A TOML node type. <br>
+			/// 				<strong><em>toml::node_type::none: </em></strong> "is every element the same type?" <br>
+			/// 				<strong><em>Anything else:</em></strong> "is every element one of these?"
+			///
+			/// \returns	True if the viewed node was homogeneous.
+			/// 
+			/// \remarks	Always returns `false` if the view does not reference a node, or if the viewed node is
+			/// 			an empty table or array.
+			[[nodiscard]]
+			bool is_homogeneous(node_type ntype) const noexcept
+			{
+				return node_ ? node_->is_homogeneous(ntype) : false;
+			}
+
+			/// \brief	Checks if the viewed node contains values/elements of only one type.
+			///
+			/// \detail \cpp
+			/// auto cfg = toml::parse("arr = [ 1, 2, 3 ]");
+			/// std::cout << "homogenous:   "sv << cfg["arr"].is_homogeneous() << "\n";
+			/// std::cout << "all doubles:  "sv << cfg["arr"].is_homogeneous<double>() << "\n";
+			/// std::cout << "all arrays:   "sv << cfg["arr"].is_homogeneous<toml::array>() << "\n";
+			/// std::cout << "all integers: "sv << cfg["arr"].is_homogeneous<int64_t>() << "\n";
+			/// 
+			/// \ecpp
+			/// 
+			/// \out
+			/// homogeneous: true
+			/// all floats:  false
+			/// all arrays:  false
+			/// all ints:    true
+			/// \eout
+			/// 
+			/// \tparam	ElemType	A TOML node or value type. <br>
+			/// 					<strong><em>Left as `void`:</em></strong> "is every element the same type?" <br>
+			/// 					<strong><em>Explicitly specified:</em></strong> "is every element a T?"
+			///
+			/// \returns	True if the viewed node was homogeneous.
+			/// 
+			/// \remarks	Always returns `false` if the view does not reference a node, or if the viewed node is
+			/// 			an empty table or array.
+			template <typename ElemType = void>
+			[[nodiscard]]
+			bool is_homogeneous() const noexcept
+			{
+				return node_ ? node_->template is_homogeneous<impl::unwrap_node<ElemType>>() : false;
+			}
+
+			/// \brief	Gets the value contained by the referenced node.
+			///
+			/// \detail This function has 'exact' retrieval semantics; the only return value types allowed are the
+			/// 		TOML native value types, or types that can losslessly represent a native value type (e.g.
+			/// 		std::wstring on Windows).
+			/// 
+			/// \tparam	T	One of the native TOML value types, or a type capable of losslessly representing one.
+			/// 
+			/// \returns	The underlying value if the node was a value of the
+			/// 			matching type (or losslessly convertible to it), or an empty optional.
+			/// 
+			/// \see node_view::value()
+			template <typename T>
+			[[nodiscard]]
+			optional<T> value_exact() const noexcept
+			{
+				if (node_)
+					return node_->template value_exact<T>();
+				return {};
+			}
+
 			TOML_PUSH_WARNINGS
 			TOML_DISABLE_INIT_WARNINGS
 
-			/// \brief	Gets the raw value contained by the referenced node.
+			/// \brief	Gets the value contained by the referenced node.
 			/// 
-			/// \tparam	U	One of the TOML value types. Can also be a string_view.
+			/// \detail This function has 'permissive' retrieval semantics; some value types are allowed
+			/// 		to convert to others (e.g. retrieving a boolean as an integer), and the specified return value
+			/// 		type can be any type where a reasonable conversion from a native TOML value exists
+			/// 		(e.g. std::wstring on Windows). If the source value cannot be represented by
+			/// 		the destination type, an empty optional is returned. See node::value() for examples.
+			/// 
+			/// \tparam	T	One of the native TOML value types, or a type capable of convertible to one.
 			///
-			/// \returns	The underlying value if the node was a value of the matching type (or convertible to it), or an empty optional.
+			/// \returns	The underlying value if the node was a value of the matching type (or convertible to it)
+			/// 			and within the range of the output type, or an empty optional.
 			/// 
-			/// \see node::value()
-			template <typename U>
-			[[nodiscard]] optional<U> value() const noexcept
+			/// \attention If you want strict value retrieval semantics that do not allow for any type conversions,
+			/// 		   use node_view::value_exact() instead.
+			/// 
+			/// \see
+			/// 	- node_view::value()
+			///		- node_view::value_exact()
+			template <typename T>
+			[[nodiscard]]
+			optional<T> value() const noexcept
 			{
 				if (node_)
-					return node_->template value<U>();
+					return node_->template value<T>();
 				return {};
 			}
 
@@ -193,21 +341,62 @@ namespace toml
 
 			/// \brief	Gets the raw value contained by the referenced node, or a default.
 			///
-			/// \tparam	U	Default value type. Must be (or be promotable to) one of the TOML value types.
-			/// \param 	default_value	The default value to return if the view did not reference a node,
-			/// 						or if the node wasn't a value, wasn't the correct type, or no conversion was possible.
+			/// \tparam	T				Default value type. Must be one of the native TOML value types,
+			/// 						or convertible to it.
+			/// \param 	default_value	The default value to return if the node wasn't a value, wasn't the
+			/// 						correct type, or no conversion was possible.
 			///
-			/// \returns	The node's underlying value, or the default if the node wasn't a value, wasn't the
-			/// 			correct type, or no conversion was possible.
+			/// \returns	The underlying value if the node was a value of the matching type (or convertible to it)
+			/// 			and within the range of the output type, or the provided default.
 			/// 
-			/// \see node::value_or()
-			template <typename U>
-			[[nodiscard]] auto value_or(U&& default_value) const noexcept
+			/// \attention This function has the same permissive retrieval semantics as node::value(). If you want strict
+			/// 		   value retrieval semantics that do not allow for any type conversions, use node_view::value_exact()
+			/// 		   instead.
+			/// 
+			/// \see
+			/// 	- node_view::value()
+			///		- node_view::value_exact()
+			template <typename T>
+			[[nodiscard]]
+			auto value_or(T&& default_value) const noexcept
 			{
-				using return_type = decltype(node_->value_or(std::forward<U>(default_value)));
-				if (node_)
-					return node_->value_or(std::forward<U>(default_value));
-				return return_type{ std::forward<U>(default_value) };
+				using namespace ::toml::impl;
+
+				static_assert(
+					!is_wide_string<T> || TOML_WINDOWS_COMPAT,
+					"Retrieving values as wide-character strings is only "
+					"supported on Windows with TOML_WINDOWS_COMPAT enabled."
+				);
+
+				if constexpr (is_wide_string<T>)
+				{
+					#if TOML_WINDOWS_COMPAT
+
+					if (node_)
+						return node_->value_or(std::forward<T>(default_value));
+					return std::wstring{ std::forward<T>(default_value) };
+
+					#else
+
+					static_assert(impl::dependent_false<T>, "Evaluated unreachable branch!");
+
+					#endif
+				}
+				else
+				{
+					using value_type = std::conditional_t<
+						std::is_pointer_v<std::decay_t<T>>,
+						std::add_pointer_t<std::add_const_t<std::remove_pointer_t<std::decay_t<T>>>>,
+						std::decay_t<T>
+					>;
+
+					if (node_)
+						return node_->value_or(std::forward<T>(default_value));
+					if constexpr (std::is_pointer_v<value_type>)
+						return value_type{ default_value };
+					else
+						return std::forward<T>(default_value);
+				}
 			}
 
 			/// \brief	Invokes a visitor on the viewed node based on its concrete type.
@@ -233,38 +422,33 @@ namespace toml
 			/// 		 actual type. In debug builds an assertion will fire when invalid accesses are attempted: \cpp
 			///
 			/// auto tbl = toml::parse(R"(
-			///	
-			///	min = 32
-			///	max = 45
-			/// 
+			///		min = 32
+			///		max = 45
 			/// )"sv);
 			/// 
-			/// auto& min_ref = tbl["min"].ref<int64_t>(); // this is OK
-			/// auto& max_ref = tbl["max"].ref<double>(); // hits assertion because the type is wrong
-			/// auto& min_ref = tbl["foo"].ref<int64_t>(); // hits assertion because "foo" didn't exist
+			/// int64_t& min_ref = tbl["min"].ref<int64_t>(); // matching type
+			/// double& max_ref = tbl["max"].ref<double>();  // mismatched type, hits assert()
+			/// int64_t& foo_ref = tbl["foo"].ref<int64_t>(); // nonexistent key, hits assert()
 			///
 			/// \ecpp
 			/// 
-			/// \tparam	U	One of the TOML value types.
+			/// \tparam	T	One of the TOML value types.
 			///
 			/// \returns	A reference to the underlying data.
-			template <typename U>
-			[[nodiscard]] decltype(auto) ref() const noexcept
+			template <typename T>
+			[[nodiscard]]
+			decltype(auto) ref() const noexcept
 			{
-				using type = impl::unwrapped<U>;
-				static_assert(
-					impl::is_value_or_node<type>,
-					"Template type parameter must be one of the TOML value types, a toml::table, or a toml::array"
-				);
 				TOML_ASSERT(
 					node_
 					&& "toml::node_view::ref() called on a node_view that did not reference a node"
 				);
-				return node_->template ref<type>();
+				return node_->template ref<impl::unwrap_node<T>>();
 			}
 
 			/// \brief	Returns true if the viewed node is a table with the same contents as RHS.
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const table& rhs) noexcept
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const table& rhs) noexcept
 			{
 				if (lhs.node_ == &rhs)
 					return true;
@@ -274,7 +458,8 @@ namespace toml
 			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const table&, )
 
 			/// \brief	Returns true if the viewed node is an array with the same contents as RHS.
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const array& rhs) noexcept
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const array& rhs) noexcept
 			{
 				if (lhs.node_ == &rhs)
 					return true;
@@ -284,46 +469,73 @@ namespace toml
 			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const array&, )
 
 			/// \brief	Returns true if the viewed node is a value with the same value as RHS.
-			template <typename U>
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const toml::value<U>& rhs) noexcept
+			template <typename T>
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const toml::value<T>& rhs) noexcept
 			{
 				if (lhs.node_ == &rhs)
 					return true;
-				const auto val = lhs.as<U>();
+				const auto val = lhs.as<T>();
 				return val && *val == rhs;
 			}
-			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const toml::value<U>&, template <typename U>)
+			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const toml::value<T>&, template <typename T>)
 
 			/// \brief	Returns true if the viewed node is a value with the same value as RHS.
-			template <typename U, typename = std::enable_if_t<impl::is_value_or_promotable<U>>>
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const U& rhs) noexcept
+			template <typename T, typename = std::enable_if_t<
+				impl::is_native<T>
+				|| impl::is_losslessly_convertible_to_native<T>
+			>>
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const T& rhs) noexcept
 			{
-				const auto val = lhs.as<impl::promoted<U>>();
-				return val && *val == rhs;
+				static_assert(
+					!impl::is_wide_string<T> || TOML_WINDOWS_COMPAT,
+					"Comparison with wide-character strings is only "
+					"supported on Windows with TOML_WINDOWS_COMPAT enabled."
+				);
+
+				if constexpr (impl::is_wide_string<T>)
+				{
+					#if TOML_WINDOWS_COMPAT
+					return lhs == impl::narrow(rhs);
+					#else
+					static_assert(impl::dependent_false<T>, "Evaluated unreachable branch!");
+					#endif
+				}
+				else
+				{
+					const auto val = lhs.as<impl::native_type_of<T>>();
+					return val && *val == rhs;
+				}
 			}
 			TOML_ASYMMETRICAL_EQUALITY_OPS(
-					const node_view&,
-					const U&,
-					template <typename U, typename = std::enable_if_t<impl::is_value_or_promotable<U>>>
+				const node_view&,
+				const T&,
+				template <typename T, typename = std::enable_if_t<
+					impl::is_native<T>
+					|| impl::is_losslessly_convertible_to_native<T>
+				>>
 			)
 
 			/// \brief	Returns true if the viewed node is an array with the same contents as the RHS initializer list.
-			template <typename U>
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const std::initializer_list<U>& rhs) noexcept
+			template <typename T>
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const std::initializer_list<T>& rhs) noexcept
 			{
 				const auto arr = lhs.as<array>();
 				return arr && *arr == rhs;
 			}
-			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const std::initializer_list<U>&, template <typename U>)
+			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const std::initializer_list<T>&, template <typename T>)
 
 			/// \brief	Returns true if the viewed node is an array with the same contents as the RHS vector.
-			template <typename U>
-			[[nodiscard]] friend bool operator == (const node_view& lhs, const std::vector<U>& rhs) noexcept
+			template <typename T>
+			[[nodiscard]]
+			friend bool operator == (const node_view& lhs, const std::vector<T>& rhs) noexcept
 			{
 				const auto arr = lhs.as<array>();
 				return arr && *arr == rhs;
 			}
-			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const std::vector<U>&, template <typename U>)
+			TOML_ASYMMETRICAL_EQUALITY_OPS(const node_view&, const std::vector<T>&, template <typename T>)
 
 			/// \brief	Returns a view of the selected subnode.
 			///
@@ -331,12 +543,33 @@ namespace toml
 			///
 			/// \returns	A view of the selected node if this node represented a table and it contained a
 			/// 			value at the given key, or an empty view.
-			[[nodiscard]] node_view operator[] (string_view key) const noexcept
+			[[nodiscard]]
+			node_view operator[] (std::string_view key) const noexcept
 			{
 				if (auto tbl = this->as_table())
 					return { tbl->get(key) };
 				return { nullptr };
 			}
+
+			#if TOML_WINDOWS_COMPAT
+
+			/// \brief	Returns a view of the selected subnode.
+			///
+			/// \param 	key	The key of the node to retrieve
+			///
+			/// \returns	A view of the selected node if this node represented a table and it contained a
+			/// 			value at the given key, or an empty view.
+			///
+			/// \attention This overload is only available when #TOML_WINDOWS_COMPAT is enabled.
+			[[nodiscard]]
+			node_view operator[] (std::wstring_view key) const noexcept
+			{
+				if (auto tbl = this->as_table())
+					return { tbl->get(key) };
+				return { nullptr };
+			}
+
+			#endif // TOML_WINDOWS_COMPAT
 
 			/// \brief	Returns a view of the selected subnode.
 			///
@@ -344,21 +577,21 @@ namespace toml
 			///
 			/// \returns	A view of the selected node if this node represented an array and it contained a
 			/// 			value at the given index, or an empty view.
-			[[nodiscard]] node_view operator[] (size_t index) const noexcept
+			[[nodiscard]]
+			node_view operator[] (size_t index) const noexcept
 			{
 				if (auto arr = this->as_array())
 					return { arr->get(index) };
 				return { nullptr };
 			}
 
-			template <typename Char, typename U>
-			friend std::basic_ostream<Char>& operator << (std::basic_ostream<Char>&, const node_view<U>&);
+			template <typename Char, typename T>
+			friend std::basic_ostream<Char>& operator << (std::basic_ostream<Char>&, const node_view<T>&);
 	};
 
 	/// \brief	Prints the viewed node out to a stream.
 	template <typename Char, typename T>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& os, const node_view<T>& nv)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& os, const node_view<T>& nv)
 	{
 		if (nv.node_)
 		{
@@ -370,13 +603,61 @@ namespace toml
 		return os;
 	}
 
-	#if !TOML_ALL_INLINE
-		extern template class TOML_API node_view<node>;
-		extern template class TOML_API node_view<const node>;
-		extern template TOML_API std::ostream& operator << (std::ostream&, const node_view<node>&);
-		extern template TOML_API std::ostream& operator << (std::ostream&, const node_view<const node>&);
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
+
+	extern template class TOML_API node_view<node>;
+	extern template class TOML_API node_view<const node>;
+
+	extern template TOML_API std::ostream& operator << (std::ostream&, const node_view<node>&);
+	extern template TOML_API std::ostream& operator << (std::ostream&, const node_view<const node>&);
+
+	#define TOML_EXTERN(name, T)																	\
+		extern template TOML_API optional<T>		node_view<node>::name<T>() const noexcept;		\
+		extern template TOML_API optional<T>		node_view<const node>::name<T>() const noexcept
+	TOML_EXTERN(value_exact, std::string_view);
+	TOML_EXTERN(value_exact, std::string);
+	TOML_EXTERN(value_exact, const char*);
+	TOML_EXTERN(value_exact, int64_t);
+	TOML_EXTERN(value_exact, double);
+	TOML_EXTERN(value_exact, date);
+	TOML_EXTERN(value_exact, time);
+	TOML_EXTERN(value_exact, date_time);
+	TOML_EXTERN(value_exact, bool);
+	TOML_EXTERN(value, std::string_view);
+	TOML_EXTERN(value, std::string);
+	TOML_EXTERN(value, const char*);
+	TOML_EXTERN(value, signed char);
+	TOML_EXTERN(value, signed short);
+	TOML_EXTERN(value, signed int);
+	TOML_EXTERN(value, signed long);
+	TOML_EXTERN(value, signed long long);
+	TOML_EXTERN(value, unsigned char);
+	TOML_EXTERN(value, unsigned short);
+	TOML_EXTERN(value, unsigned int);
+	TOML_EXTERN(value, unsigned long);
+	TOML_EXTERN(value, unsigned long long);
+	TOML_EXTERN(value, double);
+	TOML_EXTERN(value, float);
+	TOML_EXTERN(value, date);
+	TOML_EXTERN(value, time);
+	TOML_EXTERN(value, date_time);
+	TOML_EXTERN(value, bool);
+	#ifdef __cpp_lib_char8_t
+	TOML_EXTERN(value_exact, std::u8string_view);
+	TOML_EXTERN(value_exact, std::u8string);
+	TOML_EXTERN(value_exact, const char8_t*);
+	TOML_EXTERN(value, std::u8string_view);
+	TOML_EXTERN(value, std::u8string);
+	TOML_EXTERN(value, const char8_t*);
 	#endif
+	#if TOML_WINDOWS_COMPAT
+	TOML_EXTERN(value_exact, std::wstring);
+	TOML_EXTERN(value, std::wstring);
+	#endif
+	#undef TOML_EXTERN
 
-	TOML_POP_WARNINGS // TOML_DISABLE_FLOAT_WARNINGS
+	#endif // !TOML_HEADER_ONLY
 }
+TOML_NAMESPACE_END
 
+TOML_POP_WARNINGS // TOML_DISABLE_ARITHMETIC_WARNINGS

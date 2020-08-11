@@ -11,8 +11,10 @@
 #include <iostream>
 #include <fstream>
 #include "utf8_console.h"
+
 #define TOML_UNRELEASED_FEATURES 1
 #include <toml++/toml.h>
+
 using namespace std::string_view_literals;
 
 int main(int argc, char** argv)
@@ -24,11 +26,11 @@ int main(int argc, char** argv)
 	try
 	{
 		const auto tbl = toml::parse_file(path);
-		std::cout << tbl << std::endl;
+		std::cout << tbl << "\n";
 	}
 	catch (const toml::parse_error& err)
 	{
-		std::cerr << err << std::endl;
+		std::cerr << err << "\n";
 		return 1;
 	}
 	return 0;

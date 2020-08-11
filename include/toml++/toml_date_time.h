@@ -6,10 +6,7 @@
 #pragma once
 #include "toml_common.h"
 
-TOML_PUSH_WARNINGS
-TOML_DISABLE_PADDING_WARNINGS
-
-namespace toml
+TOML_NAMESPACE_START
 {
 	/// \brief	A local date.
 	struct TOML_TRIVIAL_ABI date
@@ -82,21 +79,20 @@ namespace toml
 
 	/// \brief	Prints a date out to a stream as `YYYY-MM-DD` (per RFC 3339).
 	/// \detail \cpp
-	/// std::cout << toml::date{ 1987, 3, 16 } << std::endl;
+	/// std::cout << toml::date{ 1987, 3, 16 } << "\n";
 	/// \ecpp
 	/// 
 	/// \out
 	/// 1987-03-16
 	/// \eout
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const date& rhs)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const date& rhs)
 	{
 		impl::print_to_stream(rhs, lhs);
 		return lhs;
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, const date&);
 	#endif
 
@@ -131,7 +127,8 @@ namespace toml
 
 	private:
 
-		[[nodiscard]] TOML_ALWAYS_INLINE
+		[[nodiscard]]
+		TOML_ALWAYS_INLINE
 		static constexpr uint64_t pack(time t) noexcept
 		{
 			return static_cast<uint64_t>(t.hour) << 48
@@ -173,8 +170,8 @@ namespace toml
 
 	/// \brief	Prints a time out to a stream as `HH:MM:SS.FFFFFF` (per RFC 3339).
 	/// \detail \cpp
-	/// std::cout << toml::time{ 10, 20, 34 } << std::endl;
-	/// std::cout << toml::time{ 10, 20, 34, 500000000 } << std::endl;
+	/// std::cout << toml::time{ 10, 20, 34 } << "\n";
+	/// std::cout << toml::time{ 10, 20, 34, 500000000 } << "\n";
 	/// \ecpp
 	/// 
 	/// \out
@@ -182,14 +179,13 @@ namespace toml
 	/// 10:20:34.5
 	/// \eout
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const time& rhs)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const time& rhs)
 	{
 		impl::print_to_stream(rhs, lhs);
 		return lhs;
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, const time&);
 	#endif
 
@@ -208,10 +204,10 @@ namespace toml
 		/// \brief	Constructs a timezone offset from separate hour and minute totals.
 		///
 		/// \detail \cpp
-		/// std::cout << toml::time_offset{ 2, 30 } << std::endl;
-		/// std::cout << toml::time_offset{ -2, 30 } << std::endl;
-		/// std::cout << toml::time_offset{ -2, -30 } << std::endl;
-		/// std::cout << toml::time_offset{ 0, 0 } << std::endl;
+		/// std::cout << toml::time_offset{ 2, 30 } << "\n";
+		/// std::cout << toml::time_offset{ -2, 30 } << "\n";
+		/// std::cout << toml::time_offset{ -2, -30 } << "\n";
+		/// std::cout << toml::time_offset{ 0, 0 } << "\n";
 		/// 
 		/// \ecpp
 		/// 
@@ -274,11 +270,11 @@ namespace toml
 
 	/// \brief	Prints a time_offset out to a stream as `+-HH:MM or Z` (per RFC 3339).
 	/// \detail \cpp
-	/// std::cout << toml::time_offset{ 2, 30 } << std::endl;
-	/// std::cout << toml::time_offset{ 2, -30 } << std::endl;
-	/// std::cout << toml::time_offset{} << std::endl;
-	/// std::cout << toml::time_offset{ -2, 30 } << std::endl;
-	/// std::cout << toml::time_offset{ -2, -30 } << std::endl;
+	/// std::cout << toml::time_offset{ 2, 30 } << "\n";
+	/// std::cout << toml::time_offset{ 2, -30 } << "\n";
+	/// std::cout << toml::time_offset{} << "\n";
+	/// std::cout << toml::time_offset{ -2, 30 } << "\n";
+	/// std::cout << toml::time_offset{ -2, -30 } << "\n";
 	/// \ecpp
 	/// 
 	/// \out
@@ -289,22 +285,17 @@ namespace toml
 	/// -02:30
 	/// \eout
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const time_offset& rhs)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const time_offset& rhs)
 	{
 		impl::print_to_stream(rhs, lhs);
 		return lhs;
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, const time_offset&);
 	#endif
 
-	#ifdef TOML_OPTIONAL_TYPE
-		TOML_ABI_NAMESPACE_START(custopt)
-	#else
-		TOML_ABI_NAMESPACE_START(stdopt)
-	#endif
+	TOML_ABI_NAMESPACE_BOOL(TOML_HAS_CUSTOM_OPTIONAL_TYPE, custopt, stdopt)
 
 	/// \brief	A date-time.
 	struct date_time
@@ -315,8 +306,8 @@ namespace toml
 		toml::time time;
 		/// \brief	The timezone offset component.
 		///
-		/// \remarks The date_time is said to be 'local' if the time_offset is empty.
-		optional<toml::time_offset> time_offset;
+		/// \remarks The date_time is said to be 'local' if the offset is empty.
+		optional<toml::time_offset> offset;
 
 		/// \brief	Default-constructs a zero date-time.
 		TOML_NODISCARD_CTOR
@@ -339,19 +330,19 @@ namespace toml
 		///
 		/// \param 	d	  	The date component.
 		/// \param 	t	  	The time component.
-		/// \param 	offset	The timezone offset.
+		/// \param 	off	The timezone offset.
 		TOML_NODISCARD_CTOR
-			constexpr date_time(toml::date d, toml::time t, toml::time_offset offset) noexcept
+			constexpr date_time(toml::date d, toml::time t, toml::time_offset off) noexcept
 			: date{ d },
 			time{ t },
-			time_offset{ offset }
+			offset{ off }
 		{}
 
 		/// \brief	Returns true if this date_time does not contain timezone offset information.
 		[[nodiscard]]
 		constexpr bool is_local() const noexcept
 		{
-			return !time_offset.has_value();
+			return !offset.has_value();
 		}
 
 		/// \brief	Equality operator.
@@ -360,7 +351,7 @@ namespace toml
 		{
 			return lhs.date == rhs.date
 				&& lhs.time == rhs.time
-				&& lhs.time_offset == rhs.time_offset;
+				&& lhs.offset == rhs.offset;
 		}
 
 		/// \brief	Inequality operator.
@@ -378,7 +369,7 @@ namespace toml
 				return lhs.date < rhs.date;
 			if (lhs.time != rhs.time)
 				return lhs.time < rhs.time;
-			return lhs.time_offset < rhs.time_offset;
+			return lhs.offset < rhs.offset;
 		}
 
 		/// \brief	Less-than-or-equal-to operator.
@@ -389,7 +380,7 @@ namespace toml
 				return lhs.date < rhs.date;
 			if (lhs.time != rhs.time)
 				return lhs.time < rhs.time;
-			return lhs.time_offset <= rhs.time_offset;
+			return lhs.offset <= rhs.offset;
 		}
 
 		/// \brief	Greater-than operator.
@@ -407,13 +398,13 @@ namespace toml
 		}
 	};
 
-	TOML_ABI_NAMESPACE_END // TOML_OPTIONAL_TYPE
+	TOML_ABI_NAMESPACE_END // TOML_HAS_CUSTOM_OPTIONAL_TYPE
 
 	/// \brief	Prints a date_time out to a stream in RFC 3339 format.
 	/// \detail \cpp
-	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 } } << std::endl;
-	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 }, { -2, -30 } } << std::endl;
-	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 }, {} } << std::endl;
+	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 } } << "\n";
+	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 }, { -2, -30 } } << "\n";
+	/// std::cout << toml::date_time{ { 1987, 3, 16 }, { 10, 20, 34 }, {} } << "\n";
 	/// \ecpp
 	/// 
 	/// \out
@@ -422,16 +413,14 @@ namespace toml
 	/// 1987-03-16T10:20:34Z
 	/// \eout
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const date_time& rhs)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const date_time& rhs)
 	{
 		impl::print_to_stream(rhs, lhs);
 		return lhs;
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, const date_time&);
 	#endif
 }
-
-TOML_POP_WARNINGS // TOML_DISABLE_PADDING_WARNINGS
+TOML_NAMESPACE_END

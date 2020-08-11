@@ -4,71 +4,73 @@
 // SPDX-License-Identifier: MIT
 
 #pragma once
-#include "toml_default_formatter.h"
 //# {{
-#if !TOML_DOXYGEN
-#if !defined(TOML_IMPLEMENTATION) || !TOML_IMPLEMENTATION
+#include "toml_preprocessor.h"
+#if !TOML_IMPLEMENTATION
 	#error This is an implementation-only header.
 #endif
 //# }}
 
+#include "toml_default_formatter.h"
+TOML_DISABLE_WARNINGS
+#include <cmath>
+TOML_ENABLE_WARNINGS
+
 TOML_PUSH_WARNINGS
 TOML_DISABLE_SWITCH_WARNINGS
-TOML_DISABLE_FLOAT_WARNINGS
+TOML_DISABLE_ARITHMETIC_WARNINGS
 
-namespace toml::impl
+TOML_IMPL_NAMESPACE_START
 {
 	inline constexpr size_t default_formatter_line_wrap = 120_sz;
 
-	TOML_PUSH_WARNINGS
-	TOML_DISABLE_ALL_WARNINGS
-
 	TOML_API
 	TOML_EXTERNAL_LINKAGE
-	toml::string default_formatter_make_key_segment(const toml::string& str) noexcept
+	std::string default_formatter_make_key_segment(const std::string& str) noexcept
 	{
 		if (str.empty())
-			return TOML_STRING_PREFIX("''"s);
+			return "''"s;
 		else
 		{
 			bool requiresQuotes = false;
 			{
-				impl::utf8_decoder decoder;
+				utf8_decoder decoder;
 				for (size_t i = 0; i < str.length() && !requiresQuotes; i++)
 				{
 					decoder(static_cast<uint8_t>(str[i]));
 					if (decoder.error())
 						requiresQuotes = true;
 					else if (decoder.has_code_point())
-						requiresQuotes = !impl::is_bare_key_character(decoder.codepoint);
+						requiresQuotes = !is_bare_key_character(decoder.codepoint);
 				}
 			}
 
 			if (requiresQuotes)
 			{
-				toml::string s;
+				std::string s;
 				s.reserve(str.length() + 2_sz);
-				s += TOML_STRING_PREFIX('"');
+				s += '"';
 				for (auto c : str)
 				{
-					if TOML_UNLIKELY(c >= TOML_STRING_PREFIX('\x00') && c <= TOML_STRING_PREFIX('\x1F'))
-						s.append(low_character_escape_table[c]);
-					else if TOML_UNLIKELY(c == TOML_STRING_PREFIX('\x7F'))
-						s.append(TOML_STRING_PREFIX("\\u007F"sv));
-					else if TOML_UNLIKELY(c == TOML_STRING_PREFIX('"'))
-						s.append(TOML_STRING_PREFIX("\\\""sv));
+					if TOML_UNLIKELY(c >= '\x00' && c <= '\x1F')
+					{
+						const auto& sv = low_character_escape_table[c];
+						s.append(reinterpret_cast<const char*>(sv.data()), sv.length());
+					}
+					else if TOML_UNLIKELY(c == '\x7F')
+						s.append("\\u007F"sv);
+					else if TOML_UNLIKELY(c == '"')
+						s.append("\\\""sv);
 					else
 						s += c;
 				}
-				s += TOML_STRING_PREFIX('"');
+				s += '"';
 				return s;
 			}
 			else
 				return str;
 		}
 	}
-
-	TOML_POP_WARNINGS
 
 	TOML_API
 	TOML_EXTERNAL_LINKAGE
@@ -108,7 +110,7 @@ namespace toml::impl
 
 			case node_type::string:
 			{
-				auto& n = *reinterpret_cast<const value<string>*>(&node);
+				auto& n = *reinterpret_cast<const value<std::string>*>(&node);
 				return n.get().length() + 2_sz; // + ""
 			}
 
@@ -161,12 +163,12 @@ namespace toml::impl
 		return (default_formatter_inline_columns(node) + starting_column_bias) > default_formatter_line_wrap;
 	}
 }
+TOML_IMPL_NAMESPACE_END
 
-namespace toml
+TOML_NAMESPACE_START
 {
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	void default_formatter<Char>::print_inline(const toml::table& tbl)
+	inline void default_formatter<Char>::print_inline(const toml::table& tbl)
 	{
 		if (tbl.empty())
 			impl::print_to_stream("{}"sv, base::stream());
@@ -200,9 +202,69 @@ namespace toml
 		base::clear_naked_newline();
 	}
 }
+TOML_NAMESPACE_END
 
-TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS, TOML_DISABLE_FLOAT_WARNINGS
+// implementations of windows wide string nonsense
+#if TOML_WINDOWS_COMPAT
 
-//# {{
-#endif // !TOML_DOXYGEN
-//# }}
+TOML_DISABLE_WARNINGS
+#include <Windows.h> // fuckkkk :(
+TOML_ENABLE_WARNINGS
+
+TOML_IMPL_NAMESPACE_START
+{
+	TOML_API
+	TOML_EXTERNAL_LINKAGE
+	std::string narrow(std::wstring_view str) noexcept
+	{
+		if (str.empty())
+			return {};
+
+		std::string s;
+		const auto len = WideCharToMultiByte(
+			65001, 0, str.data(), static_cast<int>(str.length()), nullptr, 0, nullptr, nullptr
+		);
+		if (len)
+		{
+			s.resize(static_cast<size_t>(len));
+			WideCharToMultiByte(65001, 0, str.data(), static_cast<int>(str.length()), s.data(), len, nullptr, nullptr);
+		}
+		return s;
+	}
+
+	TOML_API
+	TOML_EXTERNAL_LINKAGE
+	std::wstring widen(std::string_view str) noexcept
+	{
+		if (str.empty())
+			return {};
+
+		std::wstring s;
+		const auto len = MultiByteToWideChar(65001, 0, str.data(), static_cast<int>(str.length()), nullptr, 0);
+		if (len)
+		{
+			s.resize(static_cast<size_t>(len));
+			MultiByteToWideChar(65001, 0, str.data(), static_cast<int>(str.length()), s.data(), len);
+		}
+		return s;
+	}
+
+	#ifdef __cpp_lib_char8_t
+
+	TOML_API
+	TOML_EXTERNAL_LINKAGE
+	std::wstring widen(std::u8string_view str) noexcept
+	{
+		if (str.empty())
+			return {};
+
+		return widen(std::string_view{ reinterpret_cast<const char*>(str.data()), str.length() });
+	}
+
+	#endif // __cpp_lib_char8_t
+}
+TOML_IMPL_NAMESPACE_END
+
+#endif // TOML_WINDOWS_COMPAT
+
+TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS, TOML_DISABLE_ARITHMETIC_WARNINGS

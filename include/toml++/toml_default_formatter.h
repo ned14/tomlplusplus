@@ -11,27 +11,17 @@
 
 TOML_PUSH_WARNINGS
 TOML_DISABLE_SWITCH_WARNINGS
-TOML_DISABLE_PADDING_WARNINGS
 
-namespace toml::impl
+TOML_IMPL_NAMESPACE_START
 {
-	[[nodiscard]] TOML_API
-	toml::string default_formatter_make_key_segment(const toml::string& str) noexcept;
-
-	[[nodiscard]] TOML_API
-	size_t default_formatter_inline_columns(const node& node) noexcept;
-
-	[[nodiscard]] TOML_API
-	bool default_formatter_forces_multiline(const node& node, size_t starting_column_bias = 0) noexcept;
+	[[nodiscard]] TOML_API std::string default_formatter_make_key_segment(const std::string&) noexcept;
+	[[nodiscard]] TOML_API size_t default_formatter_inline_columns(const node&) noexcept;
+	[[nodiscard]] TOML_API bool default_formatter_forces_multiline(const node&, size_t = 0) noexcept;
 }
+TOML_IMPL_NAMESPACE_END
 
-namespace toml
+TOML_NAMESPACE_START
 {
-	template <typename T, typename U>
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>&, default_formatter<U>&);
-	template <typename T, typename U>
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>&, default_formatter<U>&&);
-
 	/// \brief	A wrapper for printing TOML objects out to a stream as formatted TOML.
 	/// 
 	/// \remarks You generally don't need to create an instance of this class explicitly; the stream
@@ -46,8 +36,8 @@ namespace toml
 	/// }};
 	///
 	/// // these two lines are equivalent:
-	///	std::cout << toml::default_formatter{ tbl } << std::endl;
-	///	std::cout << tbl << std::endl;
+	///	std::cout << toml::default_formatter{ tbl } << "\n";
+	///	std::cout << tbl << "\n";
 	/// 
 	/// \ecpp
 	/// 
@@ -66,9 +56,9 @@ namespace toml
 	{
 		private:
 			using base = impl::formatter<Char>;
-			std::vector<toml::string> key_path;
+			std::vector<std::string> key_path;
 
-			void print_key_segment(const toml::string& str)
+			void print_key_segment(const std::string& str)
 			{
 				if (str.empty())
 					impl::print_to_stream("''"sv, base::stream());
@@ -88,7 +78,11 @@ namespace toml
 					}
 
 					if (requiresQuotes)
-						base::print_quoted_string(str);
+					{
+						impl::print_to_stream('"', base::stream());
+						impl::print_to_stream_with_escapes(str, base::stream());
+						impl::print_to_stream('"', base::stream());
+					}
 					else
 						impl::print_to_stream(str, base::stream());
 				}
@@ -179,7 +173,7 @@ namespace toml
 						&& !arr->template get_as<table>(0_sz)->is_inline();
 				};
 
-				//values, arrays, and inline tables/table arrays
+				// values, arrays, and inline tables/table arrays
 				for (auto&& [k, v] : tbl)
 				{
 					const auto type = v.type();
@@ -201,7 +195,7 @@ namespace toml
 					}
 				}
 
-				//non-inline tables
+				// non-inline tables
 				for (auto&& [k, v] : tbl)
 				{
 					const auto type = v.type();
@@ -209,8 +203,8 @@ namespace toml
 						continue;
 					auto& child_tbl = *reinterpret_cast<const table*>(&v);
 
-					//we can skip indenting and emitting the headers for tables that only contain other tables
-					//(so we don't over-nest)
+					// we can skip indenting and emitting the headers for tables that only contain other tables
+					// (so we don't over-nest)
 					size_t child_value_count{}; //includes inline tables and non-table arrays
 					size_t child_table_count{};
 					size_t child_table_array_count{};
@@ -243,19 +237,21 @@ namespace toml
 					if (child_value_count == 0_sz && (child_table_count > 0_sz || child_table_array_count > 0_sz))
 						skip_self = true;
 
-					if (!skip_self)
-						base::increase_indent();
 					key_path.push_back(impl::default_formatter_make_key_segment(k));
 
 					if (!skip_self)
 					{
-						base::print_newline();
-						base::print_newline(true);
+						if (!base::naked_newline())
+						{
+							base::print_newline();
+							base::print_newline(true);
+						}
+						base::increase_indent();
 						base::print_indent();
 						impl::print_to_stream("["sv, base::stream());
 						print_key_path();
 						impl::print_to_stream("]"sv, base::stream());
-						base::print_newline(true);
+						base::print_newline();
 					}
 
 					print(child_tbl);
@@ -265,7 +261,7 @@ namespace toml
 						base::decrease_indent();
 				}
 
-				//table arrays
+				// table arrays
 				for (auto&& [k, v] : tbl)
 				{
 					if (!is_non_inline_array_of_tables(v))
@@ -305,6 +301,7 @@ namespace toml
 						{
 							base::decrease_indent(); // so root kvps and tables have the same indent
 							print(tbl);
+							base::print_newline();
 						}
 						break;
 					}
@@ -320,12 +317,16 @@ namespace toml
 
 		public:
 
+			/// \brief	The default flags for a default_formatter.
+			static constexpr format_flags default_flags
+				= format_flags::allow_literal_strings | format_flags::allow_multi_line_strings;
+
 			/// \brief	Constructs a default formatter and binds it to a TOML object.
 			///
 			/// \param 	source	The source TOML object.
 			/// \param 	flags 	Format option flags.
 			TOML_NODISCARD_CTOR
-			explicit default_formatter(const toml::node& source, format_flags flags = {}) noexcept
+			explicit default_formatter(const toml::node& source, format_flags flags = default_flags) noexcept
 				: base{ source, flags }
 			{}
 
@@ -335,7 +336,7 @@ namespace toml
 			friend std::basic_ostream<T>& operator << (std::basic_ostream<T>&, default_formatter<U>&&);
 	};
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template class TOML_API default_formatter<char>;
 	#endif
 
@@ -345,8 +346,7 @@ namespace toml
 
 	/// \brief	Prints the bound TOML object out to the stream as formatted TOML.
 	template <typename T, typename U>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, default_formatter<U>& rhs)
+	inline std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, default_formatter<U>& rhs)
 	{
 		rhs.attach(lhs);
 		rhs.key_path.clear();
@@ -357,32 +357,48 @@ namespace toml
 
 	/// \brief	Prints the bound TOML object out to the stream as formatted TOML (rvalue overload).
 	template <typename T, typename U>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, default_formatter<U>&& rhs)
+	inline std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, default_formatter<U>&& rhs)
 	{
 		return lhs << rhs; //as lvalue
 	}
 
-	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const table& rhs)
-	{
-		return lhs << default_formatter<Char>{ rhs };
-	}
+	#ifndef DOXYGEN
 
-	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const array& rhs)
-	{
-		return lhs << default_formatter<Char>{ rhs };
-	}
-
-	#if !TOML_ALL_INLINE
+	#if !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, default_formatter<char>&);
 		extern template TOML_API std::ostream& operator << (std::ostream&, default_formatter<char>&&);
 		extern template TOML_API std::ostream& operator << (std::ostream&, const table&);
 		extern template TOML_API std::ostream& operator << (std::ostream&, const array&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<std::string>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<int64_t>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<double>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<bool>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<toml::date>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<toml::time>&);
+		extern template TOML_API std::ostream& operator << (std::ostream&, const value<toml::date_time>&);
 	#endif
-}
 
-TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS, TOML_DISABLE_PADDING_WARNINGS
+	template <typename Char>
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const table& rhs)
+	{
+		return lhs << default_formatter<Char>{ rhs };
+	}
+
+	template <typename Char>
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const array& rhs)
+	{
+		return lhs << default_formatter<Char>{ rhs };
+	}
+
+	template <typename Char, typename T>
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const value<T>& rhs)
+	{
+		return lhs << default_formatter<Char>{ rhs };
+	}
+
+	#endif // !DOXYGEN
+}
+TOML_NAMESPACE_END
+
+TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS
+

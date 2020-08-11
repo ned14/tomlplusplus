@@ -8,15 +8,9 @@
 
 TOML_PUSH_WARNINGS
 TOML_DISABLE_SWITCH_WARNINGS
-TOML_DISABLE_PADDING_WARNINGS
 
-namespace toml
+TOML_NAMESPACE_START
 {
-	template <typename T, typename U>
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>&, json_formatter<U>&);
-	template <typename T, typename U>
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>&, json_formatter<U>&&);
-
 	/// \brief	A wrapper for printing TOML objects out to a stream as formatted JSON.
 	///
 	/// \detail \cpp
@@ -28,7 +22,7 @@ namespace toml
 	///		[fruit.apple.texture]
 	///		smooth = true
 	/// )"sv);
-	///	std::cout << toml::json_formatter{ some_toml } << std::endl;
+	///	std::cout << toml::json_formatter{ some_toml } << "\n";
 	/// 
 	/// \ecpp
 	/// 
@@ -96,21 +90,32 @@ namespace toml
 			{
 				switch (auto source_type = base::source().type())
 				{
-					case node_type::table: print(*reinterpret_cast<const table*>(&base::source())); break;
-					case node_type::array: print(*reinterpret_cast<const array*>(&base::source())); break;
-					default: base::print_value(base::source(), source_type);
+					case node_type::table:
+						print(*reinterpret_cast<const table*>(&base::source()));
+						base::print_newline();
+						break;
+
+					case node_type::array:
+						print(*reinterpret_cast<const array*>(&base::source()));
+						break;
+
+					default:
+						base::print_value(base::source(), source_type);
 				}
 			}
 
 		public:
+
+			/// \brief	The default flags for a json_formatter.
+			static constexpr format_flags default_flags = format_flags::quote_dates_and_times;
 
 			/// \brief	Constructs a JSON formatter and binds it to a TOML object.
 			///
 			/// \param 	source	The source TOML object.
 			/// \param 	flags 	Format option flags.
 			TOML_NODISCARD_CTOR
-				explicit json_formatter(const toml::node& source, format_flags flags = {}) noexcept
-				: base{ source, flags | format_flags::quote_dates_and_times }
+				explicit json_formatter(const toml::node& source, format_flags flags = default_flags) noexcept
+				: base{ source, flags }
 			{}
 
 			template <typename T, typename U>
@@ -119,7 +124,7 @@ namespace toml
 			friend std::basic_ostream<T>& operator << (std::basic_ostream<T>&, json_formatter<U>&&);
 	};
 	
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template class TOML_API json_formatter<char>;
 	#endif
 
@@ -129,8 +134,7 @@ namespace toml
 
 	/// \brief	Prints the bound TOML object out to the stream as JSON.
 	template <typename T, typename U>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, json_formatter<U>& rhs)
+	inline std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, json_formatter<U>& rhs)
 	{
 		rhs.attach(lhs);
 		rhs.print();
@@ -140,16 +144,16 @@ namespace toml
 
 	/// \brief	Prints the bound TOML object out to the stream as JSON (rvalue overload).
 	template <typename T, typename U>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, json_formatter<U>&& rhs)
+	inline std::basic_ostream<T>& operator << (std::basic_ostream<T>& lhs, json_formatter<U>&& rhs)
 	{
 		return lhs << rhs; //as lvalue
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, json_formatter<char>&);
 		extern template TOML_API std::ostream& operator << (std::ostream&, json_formatter<char>&&);
 	#endif
 }
+TOML_NAMESPACE_END
 
-TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS, TOML_DISABLE_PADDING_WARNINGS
+TOML_POP_WARNINGS // TOML_DISABLE_SWITCH_WARNINGS

@@ -10,30 +10,22 @@
 	#error This header cannot not be included when TOML_PARSER is disabled.
 #endif
 //# }}
-TOML_PUSH_WARNINGS
-TOML_DISABLE_ALL_WARNINGS
+TOML_DISABLE_WARNINGS
 #if TOML_EXCEPTIONS
 	#include <stdexcept>
 #endif
-TOML_POP_WARNINGS
+TOML_ENABLE_WARNINGS
 
 TOML_PUSH_WARNINGS
 TOML_DISABLE_INIT_WARNINGS
-TOML_DISABLE_VTABLE_WARNINGS
 
-namespace toml
+TOML_NAMESPACE_START
 {
-	#if TOML_LARGE_FILES
-		TOML_ABI_NAMESPACE_START(lf)
-	#else
-		TOML_ABI_NAMESPACE_START(sf)
-	#endif
+	TOML_ABI_NAMESPACE_BOOL(TOML_EXCEPTIONS, ex, noex)
 
-	#if TOML_DOXYGEN || !TOML_EXCEPTIONS
+	#if defined(DOXYGEN) || !TOML_EXCEPTIONS
 
-	TOML_ABI_NAMESPACE_START(noex)
-
-	/// \brief	An error thrown/returned when parsing fails.
+	/// \brief	An error generated when parsing fails.
 	/// 
 	/// \remarks This class inherits from std::runtime_error when exceptions are enabled.
 	/// 		 The public interface is the same regardless of exception mode.
@@ -63,6 +55,7 @@ namespace toml
 
 
 			/// \brief	Returns a textual description of the error.
+			/// \remark The backing string is guaranteed to be null-terminated.
 			[[nodiscard]]
 			std::string_view description() const noexcept
 			{
@@ -79,8 +72,6 @@ namespace toml
 
 	#else
 
-	TOML_ABI_NAMESPACE_START(ex)
-
 	class parse_error final
 		: public std::runtime_error
 	{
@@ -90,20 +81,20 @@ namespace toml
 		public:
 
 			TOML_NODISCARD_CTOR
-			TOML_GNU_ATTR(nonnull)
+			TOML_ATTR(nonnull)
 			parse_error(const char* desc, source_region&& src) noexcept
 				: std::runtime_error{ desc },
 				source_{ std::move(src) }
 			{}
 
 			TOML_NODISCARD_CTOR
-			TOML_GNU_ATTR(nonnull)
+			TOML_ATTR(nonnull)
 			parse_error(const char* desc, const source_region& src) noexcept
 				: parse_error{ desc, source_region{ src } }
 			{}
 
 			TOML_NODISCARD_CTOR
-			TOML_GNU_ATTR(nonnull)
+			TOML_ATTR(nonnull)
 			parse_error(const char* desc, const source_position& position, const source_path_ptr& path = {}) noexcept 
 				: parse_error{ desc, source_region{ position, position, path } }
 			{}
@@ -124,7 +115,6 @@ namespace toml
 	#endif
 
 	TOML_ABI_NAMESPACE_END // TOML_EXCEPTIONS
-	TOML_ABI_NAMESPACE_END // TOML_LARGE_FILES
 
 	/// \brief	Prints a parse_error to a stream.
 	///
@@ -135,7 +125,7 @@ namespace toml
 	/// }
 	/// catch (const toml::parse_error & err)
 	/// {
-	/// 	std::cerr << "Parsing failed:\n"sv << err << std::endl;
+	/// 	std::cerr << "Parsing failed:\n"sv << err << "\n";
 	/// }
 	/// \ecpp
 	/// 
@@ -151,8 +141,7 @@ namespace toml
 	///
 	/// \returns	The input stream.
 	template <typename Char>
-	TOML_EXTERNAL_LINKAGE
-	std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const parse_error& rhs)
+	inline std::basic_ostream<Char>& operator << (std::basic_ostream<Char>& lhs, const parse_error& rhs)
 	{
 		lhs << rhs.description();
 		lhs << "\n\t(error occurred at "sv;
@@ -161,9 +150,10 @@ namespace toml
 		return lhs;
 	}
 
-	#if !TOML_ALL_INLINE
+	#if !defined(DOXYGEN) && !TOML_HEADER_ONLY
 		extern template TOML_API std::ostream& operator << (std::ostream&, const parse_error&);
 	#endif
 }
+TOML_NAMESPACE_END
 
-TOML_POP_WARNINGS
+TOML_POP_WARNINGS // TOML_DISABLE_INIT_WARNINGS
