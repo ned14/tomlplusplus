@@ -32,8 +32,8 @@ foreach(header
   "include/toml++/toml_table.h"
   "include/toml++/toml_table.hpp"
   "include/toml++/toml_utf8.h"
-  "include/toml++/toml_utf8_generated.h"
   "include/toml++/toml_utf8_streams.h"
+  "include/toml++/toml_utf8_streams.hpp"
   "include/toml++/toml_value.h"
   "include/toml++/toml_version.h"
 )
